@@ -1,0 +1,3 @@
+- Expanded variables in EBUILDs: /var/db/repos/gentoo/metadata/md5-cache/
+- Installed packages and the USE flags used: /var/db/pkg
+- Profile use flags: /etc/portage/make.profile
