@@ -1,6 +1,6 @@
 #include "ebuild.h"
 
-Ebuild::Ebuild(string ebuild_ver): ver(ebuild_ver)
+Ebuild::Ebuild(int ebuild_id, string ebuild_ver): id(ebuild_id), ver(ebuild_ver)
 {
 
 }

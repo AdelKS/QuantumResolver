@@ -1,4 +1,4 @@
- #ifndef PACKAGE_H
+#ifndef PACKAGE_H
 #define PACKAGE_H
 
 #include <set>
@@ -23,7 +23,7 @@ public:
 
 protected:
     int id;
-    string name;
+    string name; // e.g. sys-devel/gcc
 
     StringIndexedVector<Ebuild> ebuilds; // indexed by name_ver, e.g. gcc-11.1.0-r1
 

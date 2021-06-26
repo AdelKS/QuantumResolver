@@ -8,7 +8,6 @@ SOURCES += \
         ebuild.cpp \
         main.cpp \
         package.cpp \
-        packagegroup.cpp \
         resolver.cpp \
         stringindexedvector.cpp \
         utils.cpp
@@ -17,7 +16,6 @@ HEADERS += \
     database.h \
     ebuild.h \
     package.h \
-    packagegroup.h \
     resolver.h \
     stringindexedvector.h \
     utils.h

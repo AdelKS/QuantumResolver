@@ -1,5 +1,11 @@
 #include "database.h"
 
+inline string get_version(const string &name_ver, const string &name)
+{
+    return name_ver.substr(name.size()+1, name_ver.size() - name.size()-1);
+}
+
+
 Database::Database()
 {
 
@@ -36,13 +42,9 @@ void Database::populate_from_overlay(string path)
             pkg_name_ver = entry.path().stem();
             pkg_name = entry.path().parent_path().stem();
             pkg_group = entry.path().parent_path().parent_path().stem();
+            pkg_ver = get_version(pkg_name_ver, pkg_name);
 
-            if(pkg_groups.empty() or pkg_groups.back().get_name() != pkg_group)
-            {
-                pkg_groups.new_object(pkg_group);
-            }
-
-            pkg_groups.back().add_ebuild(pkg_name, pkg_name_ver);
+            pkgs[pkg_group + "/" + pkg_name].add_version(pkg_name_ver);
         }
     }
 }
