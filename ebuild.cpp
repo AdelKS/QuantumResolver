@@ -1,6 +1,11 @@
 #include "ebuild.h"
 
-Ebuild::Ebuild(int ebuild_id, string ebuild_ver): id(ebuild_id), ver(ebuild_ver)
+Ebuild::Ebuild(string ver): eversion(ver)
 {
 
+}
+
+bool Ebuild::operator <(const Ebuild &other)
+{
+    return false;
 }

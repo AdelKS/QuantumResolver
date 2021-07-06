@@ -1,23 +1,23 @@
 #ifndef EBUILD_H
 #define EBUILD_H
 
-#include <set>
-#include <string>
-#include <map>
-
-#include "stringindexedvector.h"
+#include "ebuildversion.h"
+#include "indexedvector.h"
 
 using namespace std;
 
 class Ebuild
 {
+
 public:
-    Ebuild(int ebuild_id, string ebuild_ver);
+    Ebuild(string ver);
+
+    bool operator <(const Ebuild &other);
 
 protected:
-    int id;
-    string ver;
-    set<string> avail_use_flags;
+    EbuildVersion eversion;
 };
+
+
 
 #endif // EBUILD_H

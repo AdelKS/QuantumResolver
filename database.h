@@ -23,7 +23,8 @@ public:
     void populate_from_overlay(string path);
 
 protected:
-    StringIndexedVector<Package> pkgs;
+    IndexedVector<string, Package> pkgs;
+    unordered_map<string, int> pkg_namever_to_id;
 };
 
 #endif // DATABASE_H

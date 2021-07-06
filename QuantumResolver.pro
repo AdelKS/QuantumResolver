@@ -6,18 +6,20 @@ CONFIG -= qt
 SOURCES += \
         database.cpp \
         ebuild.cpp \
+        ebuildversion.cpp \
+        indexedvector.cpp \
         main.cpp \
         package.cpp \
         resolver.cpp \
-        stringindexedvector.cpp \
         utils.cpp
 
 HEADERS += \
     database.h \
     ebuild.h \
+    ebuildversion.h \
+    indexedvector.h \
     package.h \
     resolver.h \
-    stringindexedvector.h \
     utils.h
 
 DISTFILES += \

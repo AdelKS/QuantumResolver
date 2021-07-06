@@ -7,26 +7,24 @@
 #include <vector>
 
 #include "ebuild.h"
-#include "stringindexedvector.h"
+#include "indexedvector.h"
 
 using namespace std;
 
 class Package
 {
 public:
-    Package(int pkg_id, string pkg_name);
+    Package(string pkg_group_name);
 
     void add_version(const string &version);
 
-    string get_name();
-    int get_id();
-
 protected:
-    int id;
-    string name; // e.g. sys-devel/gcc
+    string group_name; // e.g. sys-devel/gcc
 
-    StringIndexedVector<Ebuild> ebuilds; // indexed by name_ver, e.g. gcc-11.1.0-r1
+    IndexedVector<string, Ebuild> ebuilds; // indexed by ver, e.g. 11.1.0-r1
 
 };
+
+bool operator < (const Package &a, const Package &b);
 
 #endif // PACKAGE_H

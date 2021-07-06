@@ -1,21 +1,16 @@
 #include "package.h"
 
-Package::Package(int pkg_id, string pkg_name): id(pkg_id), name (pkg_name)
+Package::Package(string pkg_group_name): group_name(pkg_group_name), ebuilds(true)
 {
 
-}
-
-string Package::get_name()
-{
-    return name;
-}
-
-int Package::get_id()
-{
-    return id;
 }
 
 void Package::add_version(const string &version)
 {
     ebuilds.new_object(version);
+}
+
+bool operator < (const Package &a, const Package &b)
+{
+    return true;
 }
