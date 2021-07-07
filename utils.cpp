@@ -1,5 +1,8 @@
 #include "utils.h"
 
+#include <iostream>
+#include <cstring>
+
 vector<pair<string, string>> split_string(const string &str, const vector<string> &separators)
 {
     const int N = str.size();
@@ -11,8 +14,6 @@ vector<pair<string, string>> split_string(const string &str, const vector<string
     const string* matched_sep = &empty;
     int match_start = 0;
 
-    int j = 0;
-
     for(int i = 0 ; i < N; i++)
     {
         for(const string &sep: separators)
@@ -22,9 +23,8 @@ vector<pair<string, string>> split_string(const string &str, const vector<string
             if(n > N - i)
                continue;
 
-            for(j = 0; j < n && sep[j] == str[i+j]; ++j);
-
-            if(j != n)
+            // Use strncmp to leverage the SSE4.2 PCMPxSTRx instructions
+            if(strncmp(str.c_str()+i, sep.c_str(), n) != 0)
                 continue;
 
             split.emplace_back(*matched_sep, str.substr(match_start, i-match_start));
