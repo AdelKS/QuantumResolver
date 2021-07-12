@@ -16,8 +16,7 @@ void Database::populate_from_cache_dir(string path)
     fs::path cache_path(path);
     if(not fs::is_directory(cache_path))
     {
-        cout << "Path is not a directory" << endl;
-        return;
+        throw "Path is not a directory";
     }
 
 //    string pkg_group, pkg_namever;
@@ -49,8 +48,7 @@ void Database::populate_from_overlay(string path)
     fs::path overlay_path(path);
     if(not fs::is_directory(overlay_path))
     {
-        cout << "Path is not a directory" << endl;
-        return;
+        throw "Path is not a directory";
     }
 
     string pkg_group, pkg_name, pkg_ver, pkg_namever;
@@ -58,7 +56,9 @@ void Database::populate_from_overlay(string path)
 
     for(fs::directory_entry const& entry: fs::recursive_directory_iterator(overlay_path))
     {
-        if(entry.is_regular_file() and entry.path().extension() == ".ebuild" and entry.path().parent_path() != overlay_path)
+        if(entry.is_regular_file()
+                and entry.path().extension() == ".ebuild"
+                and entry.path().parent_path().parent_path().parent_path() == overlay_path)
         {
             pkg_namever = entry.path().stem();
             pkg_name = entry.path().parent_path().stem();

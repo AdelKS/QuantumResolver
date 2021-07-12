@@ -15,16 +15,16 @@ class EbuildVersion
 {
 public:
     EbuildVersion(string ver);
+    bool operator < (const EbuildVersion &other);
 
 protected:
     bool valid;
     string version;
-    double main_version;
-    vector<int> main_subversions;
-    vector<pair<string, int>> trailing_subversions;
+    vector<pair<int, long>> version_parsing; // see operator <
 
     const static vector<string> ordered_separators;
     const static regex ver_regexp;
+    const static pair<string,vector<string>> version_single_letter;
 };
 
 #endif // EBUILDVERSION_H

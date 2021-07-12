@@ -3,6 +3,9 @@ CONFIG += console c++2a
 CONFIG -= app_bundle
 CONFIG -= qt
 
+QMAKE_CFLAGS += -march=native
+QMAKE_CXXFLAGS += -march=native
+
 SOURCES += \
         database.cpp \
         ebuild.cpp \

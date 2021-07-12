@@ -4,9 +4,19 @@ using namespace std;
 
 #include "database.h"
 
+
+
 int main()
 {
     Database database;
-    database.populate_from_overlay("/var/db/repos/gentoo");
+    try
+    {
+        database.populate_from_overlay("/var/db/repos/gentoo");
+    }
+    catch(string str)
+    {
+        cout << str << endl;
+    }
+
     return 0;
 }
