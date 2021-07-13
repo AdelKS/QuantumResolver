@@ -3,11 +3,14 @@
 #include <iostream>
 #include <cstring>
 
-vector<pair<int, string>> split_string(const string &str, const vector<string> &separators)
+vector<pair<int, string>> split_string(const string &str, const vector<string> &separators, const int first_variable_sep_index)
 {
-    /* splits string str into vector of pairs
-     * with str="5.12.3_pre324_p32-r23", separators=[".", "_pre", "-r"]
-     * the returned vector would be [("", "5"), (".", "12"), (".", "3"), ("_pre", "324"), ("_p", "32"), ("-r", "23")]
+    /* splits string str into vector of pairs,
+     * first_variable_sep_index is the index of the very first string that is split, who does not necessarily have a separator before it
+     * Example:
+     *  str="5.12.3_pre324_p32-r23", separators=[".", "_p", "_pre", "-r"], first_variable_sep_index=666
+     *  the returned vector would be [(666, "5"), (0, "12"), (0, "3"), (2, "324"), (1, "32"), (3, "23")]
+     *  where the first index of each couple is the index of the matched separator 0 -> ".", 1 -> "_p", 2 -> "_pre", 3 -> "-r
      * */
 
     const int N = str.size();
@@ -15,7 +18,7 @@ vector<pair<int, string>> split_string(const string &str, const vector<string> &
 
     vector<pair<int, string>> split;
 
-    int curr_sep_index = 0;
+    int curr_sep_index = first_variable_sep_index;
     int new_sep_index = 0;
     int match_start = 0;
     bool match;
@@ -59,12 +62,6 @@ vector<pair<int, string>> split_string(const string &str, const vector<string> &
 
     else if(match_start > N)
         throw "string splitting failed, string=" + str;
-
-
-    if(split.size() > 5)
-    {
-        cout << "Big version string here! " << endl;
-    }
 
     return split;
 }

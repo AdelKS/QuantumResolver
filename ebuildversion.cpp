@@ -1,10 +1,34 @@
 #include <locale>
+#include <algorithm>
 
 #include "ebuildversion.h"
 #include "utils.h"
 
+template<class Object>
+int index_of(const vector<Object> vec, Object obj)
+{
+    // Get the index of obj in vec
+    return find(vec.cbegin(), vec.cend(), obj) - vec.cbegin();
+}
+
+// The regex that validates EBUILD version strings
 const regex EbuildVersion::ver_regexp = regex("^(\\d+)((\\.\\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\\d*)*)(-r(\\d+))?$");
-const vector<string> EbuildVersion::ordered_separators = {".", "_p", "_rc", "_pre", "_beta", "_alpha", "-r"};
+
+// All the separators in an EBUILD string
+const vector<string> EbuildVersion::ordered_separators = {"-r", "_alpha", "_beta", "_pre", "_rc", "_p", "."};
+
+// Index of "." in ordered_separators
+const int EbuildVersion::dot_index = index_of(EbuildVersion::ordered_separators, string("."));
+
+// Index of the separators that make an EBUILD's version smaller that another EBUILD who is stricly equal but has these separators appended
+// It's "_alpha", "_beta", "_pre", and "_rc", because for example "1.0_alpha" < "1.0".
+const unordered_set<int> EbuildVersion::smaller_than_nothing_separators =
+{
+    index_of(EbuildVersion::ordered_separators, string("_rc")),
+    index_of(EbuildVersion::ordered_separators, string("_pre")),
+    index_of(EbuildVersion::ordered_separators, string("_beta")),
+    index_of(EbuildVersion::ordered_separators, string("_alpha"))
+};
 
 EbuildVersion::EbuildVersion(string ver): version(ver)
 {
@@ -12,7 +36,7 @@ EbuildVersion::EbuildVersion(string ver): version(ver)
 
     if(valid)
     {
-        vector<pair<int, string>> split = split_string(version, ordered_separators);
+        vector<pair<int, string>> split = split_string(version, ordered_separators, dot_index);
 
         long letter_number = 0, number = 0;
         unsigned long processed_chars = 0;
@@ -27,9 +51,12 @@ EbuildVersion::EbuildVersion(string ver): version(ver)
                 continue;
             }
 
-            letter_found = couple.first == 0 && isalpha(couple.second.back(), locale("C"));
+            letter_found = isalpha(couple.second.back(), locale("C"));
             if(letter_found)
             {
+                if(couple.first != dot_index)
+                    throw "something is wrong with this version string: " + version;
+
                 letter_number = couple.second.back();
                 couple.second = couple.second.substr(0, couple.second.size()-1);
             }
@@ -39,7 +66,7 @@ EbuildVersion::EbuildVersion(string ver): version(ver)
             {
               version_parsing.emplace_back(couple.first, number);
               if(letter_found)
-                  version_parsing.emplace_back(0, letter_number);
+                  version_parsing.emplace_back(dot_index, letter_number);
             }
             else throw "the following string couldn't be converted entirely to an integer: " + couple.second;
 
@@ -49,4 +76,30 @@ EbuildVersion::EbuildVersion(string ver): version(ver)
     {
         throw "Version " + version + " is of invalid format";
     }
+}
+
+bool EbuildVersion::operator < (const EbuildVersion &other)
+{
+    /* we lexicographically compare the two version_parsing variables at same size. If they are equal, we check the next subversion in the longer one to know if it's better
+     *  examples:
+     *      [(".", 1), (".", 2)] < [(".", 1), (".", 3)]
+     *      [(".", 1)] < [(".", 1), ("_p", 1)]
+     *      [(".", 1)] < [(".", 1), ("-r", 1)]
+     *      [(".", 1), ("_rc", 1)] < [(".", 1)]
+     *      */
+
+    ulong min_size = min(version_parsing.size(), other.version_parsing.size());
+    const auto res = lexicographical_compare_three_way(version_parsing.cbegin(),        version_parsing.cbegin() + min_size,
+                                                       other.version_parsing.cbegin(),  other.version_parsing.cbegin() + min_size);
+
+    bool result = res == strong_ordering::less or
+            (version_parsing.size() > min_size and smaller_than_nothing_separators.contains(version_parsing[min_size].first)) or
+            (other.version_parsing.size() > min_size and not smaller_than_nothing_separators.contains(other.version_parsing[min_size].first));
+
+    if(res == strong_ordering::equal and (version_parsing.size() > min_size or other.version_parsing.size() > min_size))
+    {
+        cout << "Found our case!" << endl;
+    }
+
+    return result;
 }

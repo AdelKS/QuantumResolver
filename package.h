@@ -21,10 +21,8 @@ public:
 protected:
     string group_name; // e.g. sys-devel/gcc
 
-    IndexedVector<string, Ebuild> ebuilds; // indexed by ver, e.g. 11.1.0-r1
+    IndexedVector<string, Ebuild, true> ebuilds; // indexed by ver, e.g. 11.1.0-r1
 
 };
-
-bool operator < (const Package &a, const Package &b);
 
 #endif // PACKAGE_H

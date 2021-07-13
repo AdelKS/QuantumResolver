@@ -23,7 +23,7 @@ public:
     void populate_from_overlay(string path);
 
 protected:
-    IndexedVector<string, Package> pkgs;
+    IndexedVector<string, Package, false> pkgs;
     unordered_map<string, int> pkg_namever_to_id;
 };
 
