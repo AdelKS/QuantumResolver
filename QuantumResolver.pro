@@ -7,23 +7,24 @@ QMAKE_CFLAGS += -march=native
 QMAKE_CXXFLAGS += -march=native
 
 SOURCES += \
-        database.cpp \
-        ebuild.cpp \
-        ebuildversion.cpp \
-        indexedvector.cpp \
-        main.cpp \
-        package.cpp \
-        resolver.cpp \
-        utils.cpp
+        src/database.cpp \
+        src/ebuild.cpp \
+        src/ebuildversion.cpp \
+        src/indexedvector.cpp \
+        src/main.cpp \
+        src/package.cpp \
+        src/resolver.cpp \
+        src/utils.cpp
 
 HEADERS += \
-    database.h \
-    ebuild.h \
-    ebuildversion.h \
-    indexedvector.h \
-    package.h \
-    resolver.h \
-    utils.h
+    src/database.h \
+    src/ebuild.h \
+    src/ebuildversion.h \
+    src/indexedvector.h \
+    src/package.h \
+    src/resolver.h \
+    src/utils.h
 
 DISTFILES += \
+    README.md \
     notes.md
