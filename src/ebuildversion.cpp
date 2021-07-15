@@ -20,16 +20,15 @@ const vector<string> EbuildVersion::ordered_separators = {"-r", "_alpha", "_beta
 // Index of "." in ordered_separators
 const int EbuildVersion::dot_index = index_of(EbuildVersion::ordered_separators, string("."));
 
-// Index of the separators that make an EBUILD's version smaller that another EBUILD who is stricly equal but has these separators appended
-// Example "1.0_alpha" < "1.0", "1.0_rc3234" < "1.0"
-// It's "_alpha", "_beta", "_pre", and "_rc"
-const unordered_set<int> EbuildVersion::smaller_than_nothing_separators =
+
+inline bool is_smaller_than_nothing(const int sep_index)
 {
-    index_of(EbuildVersion::ordered_separators, string("_rc")),
-    index_of(EbuildVersion::ordered_separators, string("_pre")),
-    index_of(EbuildVersion::ordered_separators, string("_beta")),
-    index_of(EbuildVersion::ordered_separators, string("_alpha"))
-};
+    // if sep_index refers to "_rc", "_pre", "_beta" or "_alpha", return true.
+    // If an ebuild has a version string v, then v' = v + (any of the separators above) + (whatever else) makes the version v' smaller
+    // Example "1.0_alpha" < "1.0", "1.0_rc3234" < "1.0"
+
+    return 1 <= sep_index and sep_index <= 4;
+}
 
 EbuildVersion::EbuildVersion(string ver): version(ver)
 {
@@ -96,8 +95,8 @@ bool EbuildVersion::operator < (const EbuildVersion &other)
 
     bool result = res == strong_ordering::less or (
                             res == strong_ordering::equal and (
-                                    (version_parsing.size() > min_size and smaller_than_nothing_separators.contains(version_parsing[min_size].first)) or
-                                    (other.version_parsing.size() > min_size and not smaller_than_nothing_separators.contains(other.version_parsing[min_size].first))
+                                    (version_parsing.size() > min_size and is_smaller_than_nothing(version_parsing[min_size].first)) or
+                                    (other.version_parsing.size() > min_size and not is_smaller_than_nothing(other.version_parsing[min_size].first))
                             ));
 
     if(res == strong_ordering::equal and (version_parsing.size() > min_size or other.version_parsing.size() > min_size))
