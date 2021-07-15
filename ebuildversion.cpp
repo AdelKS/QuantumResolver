@@ -21,7 +21,8 @@ const vector<string> EbuildVersion::ordered_separators = {"-r", "_alpha", "_beta
 const int EbuildVersion::dot_index = index_of(EbuildVersion::ordered_separators, string("."));
 
 // Index of the separators that make an EBUILD's version smaller that another EBUILD who is stricly equal but has these separators appended
-// It's "_alpha", "_beta", "_pre", and "_rc", because for example "1.0_alpha" < "1.0".
+// Example "1.0_alpha" < "1.0", "1.0_rc3234" < "1.0"
+// It's "_alpha", "_beta", "_pre", and "_rc"
 const unordered_set<int> EbuildVersion::smaller_than_nothing_separators =
 {
     index_of(EbuildVersion::ordered_separators, string("_rc")),
@@ -74,27 +75,30 @@ EbuildVersion::EbuildVersion(string ver): version(ver)
     }
     else
     {
-        throw "Version " + version + " is of invalid format";
+        throw "Version string of invalid format : " + version;
     }
 }
 
 bool EbuildVersion::operator < (const EbuildVersion &other)
 {
-    /* we lexicographically compare the two version_parsing variables at same size. If they are equal, we check the next subversion in the longer one to know if it's better
+    /* we lexicographically compare the two version_parsing variables at same size. If they are equal, we check the next subversion in the longer one to know if it's newer
      *  examples:
-     *      [(".", 1), (".", 2)] < [(".", 1), (".", 3)]
-     *      [(".", 1)] < [(".", 1), ("_p", 1)]
-     *      [(".", 1)] < [(".", 1), ("-r", 1)]
-     *      [(".", 1), ("_rc", 1)] < [(".", 1)]
+     *      [(".", 1), (".", 2)] < [(".", 1), (".", 3)] aka     1.2 < 1.3
+     *      [(".", 1)] < [(".", 1), ("_p", 1)]          aka     1 < 1_p1
+     *      [(".", 1)] < [(".", 1), ("-r", 1)]          aka     1 < 1-r1
+     *      [(".", 1), ("_rc", 1)] < [(".", 1)]         aka     1_rc1 < 1
+     *      Note: "-r", ".", "_rc" are actually referenced by their integer priority, given by their index in ordered_separators
      *      */
 
-    ulong min_size = min(version_parsing.size(), other.version_parsing.size());
+    const size_t min_size = min(version_parsing.size(), other.version_parsing.size());
     const auto res = lexicographical_compare_three_way(version_parsing.cbegin(),        version_parsing.cbegin() + min_size,
                                                        other.version_parsing.cbegin(),  other.version_parsing.cbegin() + min_size);
 
-    bool result = res == strong_ordering::less or
-            (version_parsing.size() > min_size and smaller_than_nothing_separators.contains(version_parsing[min_size].first)) or
-            (other.version_parsing.size() > min_size and not smaller_than_nothing_separators.contains(other.version_parsing[min_size].first));
+    bool result = res == strong_ordering::less or (
+                            res == strong_ordering::equal and (
+                                    (version_parsing.size() > min_size and smaller_than_nothing_separators.contains(version_parsing[min_size].first)) or
+                                    (other.version_parsing.size() > min_size and not smaller_than_nothing_separators.contains(other.version_parsing[min_size].first))
+                            ));
 
     if(res == strong_ordering::equal and (version_parsing.size() > min_size or other.version_parsing.size() > min_size))
     {

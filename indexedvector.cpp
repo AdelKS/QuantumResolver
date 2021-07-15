@@ -33,12 +33,16 @@ int IndexedVector<Name, Object, sort>::index_of(Name name)
 template <class Name, class Object, bool sort>
 int IndexedVector<Name, Object, sort>::new_object(Name name)
 {
-    // Pushes a new object at the end
+    // Push new object to back
     int i = objects.size();
     objects.push_back(Object(name));
 
+    // this if condition is computed at compile-time
     if constexpr (sort)
     {
+        // when sort is true
+        // buble sort the object to its final position        
+
         while(i > 1 and objects[i] < objects[i-1])
         {
             Object tmp = objects[i];
