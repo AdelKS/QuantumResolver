@@ -1,5 +1,7 @@
 #include "indexedvector.h"
 
+using namespace std;
+
 template <class Name, class Object, bool sort>
 IndexedVector<Name, Object, sort>::IndexedVector()
 {

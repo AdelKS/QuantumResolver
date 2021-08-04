@@ -4,6 +4,8 @@
 #include "ebuildversion.h"
 #include "utils.h"
 
+using namespace std;
+
 template<class Object>
 int index_of(const vector<Object> vec, Object obj)
 {

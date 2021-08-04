@@ -4,8 +4,6 @@
 #include <string>
 #include <vector>
 
-using namespace std;
-
-vector<pair<int, string>> split_string(const string &str, const vector<string> &separators, const int first_variable_sep_index = 0);
+std::vector<std::pair<int, std::string>> split_string(const std::string &str, const std::vector<std::string> &separators, const int first_variable_sep_index = 0);
 
 #endif // UTILS_H

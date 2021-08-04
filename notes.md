@@ -1,3 +1,4 @@
 - Expanded variables in EBUILDs: /var/db/repos/gentoo/metadata/md5-cache/
 - Installed packages and the USE flags used: /var/db/pkg
 - Profile use flags: /etc/portage/make.profile
+- - Update repository md5-cache: ```sudo egencache --update --repo gentoo```

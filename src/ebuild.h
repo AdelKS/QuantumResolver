@@ -1,16 +1,17 @@
 #ifndef EBUILD_H
 #define EBUILD_H
 
+#include <string>
+
 #include "ebuildversion.h"
 #include "indexedvector.h"
 
-using namespace std;
 
 class Ebuild
 {
 
 public:
-    Ebuild(string ver);
+    Ebuild(std::string ver);
 
     bool operator <(const Ebuild &other);
 

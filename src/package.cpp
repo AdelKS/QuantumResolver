@@ -2,6 +2,8 @@
 
 #include "package.h"
 
+using namespace std;
+
 Package::Package(string pkg_group_name): group_name(pkg_group_name)
 {
 

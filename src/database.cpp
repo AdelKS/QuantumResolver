@@ -1,4 +1,10 @@
+#include <filesystem>
+#include <iostream>
+
 #include "database.h"
+
+namespace fs = filesystem;
+using namespace std;
 
 inline string get_version(const string &name_ver, const string &name)
 {
@@ -19,28 +25,24 @@ void Database::populate_from_cache_dir(string path)
         throw "Path is not a directory";
     }
 
-//    string pkg_group, pkg_namever;
-//    int pkg_index;
+    string pkg_group, pkg_namever;
 
-//    for(fs::directory_entry const& entry: fs::recursive_directory_iterator(cache_path))
-//    {
-//        if(entry.is_regular_file() and entry.path().parent_path() != cache_path)
-//        {
-//            pkg_namever = entry.path().stem();
-//            pkg_group = entry.path().parent_path().stem();
+    for(fs::directory_entry const& entry: fs::recursive_directory_iterator(cache_path))
+    {
+        if(entry.is_regular_file()
+                and entry.path().parent_path().parent_path() == cache_path)
+        {
+            pkg_namever = entry.path().filename(); // we use filename here because the cache files do not contain any extension
+            pkg_group = entry.path().parent_path().stem();
 
-//            auto it = pkg_namever_to_id.index_of(pkg_group + "/" + pkg_namever);
-//            if(it == pkg_namever_to_id.end())
-//            {
-//                cout << "Package " << pkg_group + "/" + pkg_namever << " not found in overlay. skipping..." << endl;
-//                continue;
-//            }
-//            else pkg_index = it->second;
-
-//            pkgs[pkg_index].add_version(pkg_namever);
-//            pkg_namever_to_id[pkg_group + "/" + pkg_namever] = pkg_index;
-//        }
-//    }
+            const auto it = pkg_namever_to_id.find(pkg_group + "/" + pkg_namever);
+            if(it != pkg_namever_to_id.end())
+            {
+                cout << "package found" << endl;
+            }
+            else throw "there's no ebuild that stisfies this package version: " + pkg_group + "/" + pkg_namever;
+        }
+    }
 }
 
 void Database::populate_from_overlay(string path)

@@ -3,6 +3,8 @@
 #include <iostream>
 #include <cstring>
 
+using namespace std;
+
 vector<pair<int, string>> split_string(const string &str, const vector<string> &separators, const int first_variable_sep_index)
 {
     /* splits string str into vector of pairs,

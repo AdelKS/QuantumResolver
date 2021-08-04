@@ -5,8 +5,6 @@
 #include <string>
 #include <unordered_map>
 
-using namespace std;
-
 template <class Name, class Object, bool sort>
 class IndexedVector
 {
@@ -29,8 +27,8 @@ public:
     static const int npos = -1;
 
 protected:
-    vector<Object> objects;
-    unordered_map<Name, int> name_to_index;
+    std::vector<Object> objects;
+    std::unordered_map<Name, int> name_to_index;
 };
 
 #include "indexedvector.cpp"

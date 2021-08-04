@@ -1,5 +1,7 @@
 #include "ebuild.h"
 
+using namespace std;
+
 Ebuild::Ebuild(string ver): eversion(ver)
 {
 
