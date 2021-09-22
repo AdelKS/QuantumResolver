@@ -5,6 +5,19 @@
 
 using namespace std;
 
+bool starts_with(const string *str, const string *sub_str)
+{
+    if(sub_str->size() > str->size())
+        return false;
+    else return strncmp(str->c_str(), sub_str->c_str(), str->size()) == 0;
+}
+
+bool starts_with(const char *str, const char *sub_str, int sub_str_size)
+{
+    // Warning! sub_str needs to be smaller
+    return strncmp(str, sub_str, sub_str_size) == 0;
+}
+
 vector<pair<int, string>> split_string(const string &str, const vector<string> &separators, const int first_variable_sep_index)
 {
     /* splits string str into vector of pairs,

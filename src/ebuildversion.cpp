@@ -1,5 +1,6 @@
 #include <locale>
 #include <algorithm>
+#include <iostream>
 
 #include "ebuildversion.h"
 #include "utils.h"

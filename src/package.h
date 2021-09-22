@@ -10,8 +10,9 @@ class Package
 {
 public:
     Package(std::string pkg_group_name);
-
     void add_version(const std::string &version);
+    const string &get_group_name();
+    Ebuild &get_ebuild(const string &group_namever);
 
 protected:
     string group_name; // e.g. sys-devel/gcc
