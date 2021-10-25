@@ -4,31 +4,47 @@
 
 using namespace std;
 
-Package::Package(string pkg_group_name): group_name(pkg_group_name)
+Package::Package(string pkg_group_name): pkg_name(pkg_group_name)
 {
 
 }
 
-const string &Package::get_group_name()
+const string &Package::get_pkg_name()
 {
-    return group_name;
+    return pkg_name;
 }
 
-Ebuild &Package::get_ebuild(const string &group_namever)
+void Package::set_id(size_t pkg_id)
 {
-    string ver = group_namever.substr(group_name.size()+1); // +1 to remove the leading dash, e.g. -11.1.0
-    int index = ebuilds.index_of(ver);
+    this->pkg_id = pkg_id;
+}
+
+Ebuild &Package::get_ebuild(const string &ver)
+{
+    size_t index = ebuilds.index_of(ver);
     if(index == ebuilds.npos)
-        throw "version " + ver + "is not available in " + group_name;
+        throw runtime_error("version " + ver + "is not available in " + pkg_name);
     else return ebuilds[index];
 }
 
-
-void Package::add_version(const string &version)
+Ebuild &Package::get_ebuild(const size_t &id)
 {
-    ebuilds.new_object(version);
-    if(ebuilds.size() > 5)
-    {
-        cout << "many ebuilds in this package!" << endl;
-    }
+    return ebuilds[id];
+}
+
+
+Ebuild& Package::add_version(const string &version)
+{
+    size_t index = ebuilds.new_object(version);
+    ebuilds[index].set_pkg_id(pkg_id);
+
+    return ebuilds[index];
+}
+
+void Package::update_useflags_with_constraints(const VersionConstraint &constraint,
+                                               std::unordered_map<size_t, bool> useflag_states)
+{
+    for(size_t ebuild_id = 0; ebuild_id < ebuilds.size() ; ebuild_id++)
+        if(respects_constraint(ebuilds[ebuild_id].get_version(), constraint))
+            ebuilds[ebuild_id].assign_useflag_states(useflag_states);
 }

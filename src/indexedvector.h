@@ -5,7 +5,7 @@
 #include <string>
 #include <unordered_map>
 
-template <class Name, class Object, bool sort>
+template <class Name, class Object>
 class IndexedVector
 {
     // A vector that can either be accessed with vector[1] or vector[name], where name is an instance of Name
@@ -14,21 +14,21 @@ class IndexedVector
 public:
     IndexedVector();
 
-    int size();
+    size_t size();
     bool empty();
     Object& back();
-    int index_of(Name name);
+    size_t index_of(Name name) const;
     bool contains(Name name);
-    virtual int new_object(Name name);
+    virtual size_t new_object(Name name);
     void push_back(Object ob, Name name);
     Object& operator [](Name name);
-    Object& operator [](int i);
+    Object& operator [](size_t i);
 
-    static const int npos = -1;
+    static const size_t npos = -1;
 
 protected:
     std::vector<Object> objects;
-    std::unordered_map<Name, int> name_to_index;
+    std::unordered_map<Name, size_t> name_to_index;
 };
 
 #include "indexedvector.cpp"

@@ -6,16 +6,16 @@ using namespace std;
 
 
 
-int main()
+int main(int argc, char *argv[])
 {
     Database database;
     try
     {
         database.populate_from_cache_dir("/var/db/repos/gentoo/metadata/md5-cache");
     }
-    catch(string str)
+    catch(runtime_error &err)
     {
-        cout << str << endl;
+        cout << err.what() << endl;
     }
 
     return 0;

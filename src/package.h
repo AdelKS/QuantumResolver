@@ -6,18 +6,31 @@
 #include "ebuild.h"
 #include "indexedvector.h"
 
+struct PackageConstraint
+{
+    size_t pkg_id;
+    VersionConstraint ver;
+};
+
 class Package
 {
 public:
     Package(std::string pkg_group_name);
-    void add_version(const std::string &version);
-    const string &get_group_name();
-    Ebuild &get_ebuild(const string &group_namever);
+    Ebuild &add_version(const std::string &version);
+
+    const string &get_pkg_name();
+    Ebuild &get_ebuild(const string &ver);
+    Ebuild &get_ebuild(const size_t &id);
+
+    void update_useflags_with_constraints(const VersionConstraint &constraint, std::unordered_map<size_t, bool> useflag_states);
+
+    void set_id(size_t pkg_id);
 
 protected:
-    string group_name; // e.g. sys-devel/gcc
+    string pkg_name; // e.g. sys-devel/gcc
+    size_t pkg_id;
 
-    IndexedVector<std::string, Ebuild, true> ebuilds; // indexed by ver, e.g. 11.1.0-r1
+    IndexedVector<std::string, Ebuild> ebuilds; // indexed by ver, e.g. 11.1.0-r1
 
 };
 

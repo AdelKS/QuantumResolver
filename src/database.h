@@ -9,18 +9,27 @@
 
 class Database
 {
+    using EbuildId = std::pair<size_t, size_t> ;
+
 public:
     Database();
 
     void populate_from_cache_dir(std::string path);
-    void populate_from_overlay(std::string path);
+
+    std::unordered_map<std::size_t, bool> parse_useflags(const string_view &useflags_str, bool default_state, bool create_ids = false);
+
+    static const size_t npos = -1;
 
 protected:
-    void add_use_flags_to_ebuild(const string &uses_string, Package &pkg, const string &pkg_group_namever);
+    std::size_t get_useflag_id(const string &useflag_str, bool create_ids = false);
 
-    IndexedVector<std::string, Package, false> pkgs;
-    unordered_map<std::string, int> pkg_group_namever_to_pkg_id;
-    unordered_map<std::string, int> iuse_to_id;
+    void add_dependencies_to_ebuild(const string &dep_string, Ebuild &ebuild);
+
+    void account_for_global_useflags();
+    void account_for_user_useflags();
+
+    IndexedVector<std::string, Package> pkgs;
+    std::unordered_map<std::string, std::size_t> useflag_str_to_id;
 };
 
 #endif // DATABASE_H

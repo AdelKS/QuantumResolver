@@ -3,6 +3,8 @@ CONFIG += console c++2a
 CONFIG -= app_bundle
 CONFIG -= qt
 
+TARGET = quantumresolve
+
 QMAKE_CFLAGS += -march=native
 QMAKE_CXXFLAGS += -march=native
 

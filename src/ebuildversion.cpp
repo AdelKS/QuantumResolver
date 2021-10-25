@@ -8,7 +8,7 @@
 using namespace std;
 
 template<class Object>
-int index_of(const vector<Object> vec, Object obj)
+size_t index_of(const vector<Object> vec, Object obj)
 {
     // Get the index of obj in vec
     return find(vec.cbegin(), vec.cend(), obj) - vec.cbegin();
@@ -21,10 +21,10 @@ const regex EbuildVersion::ver_regexp = regex("^(\\d+)((\\.\\d+)*)([a-z]?)((_(pr
 const vector<string> EbuildVersion::ordered_separators = {"-r", "_alpha", "_beta", "_pre", "_rc", "_p", "."};
 
 // Index of "." in ordered_separators
-const int EbuildVersion::dot_index = index_of(EbuildVersion::ordered_separators, string("."));
+const size_t EbuildVersion::dot_index = index_of(EbuildVersion::ordered_separators, string("."));
 
 
-inline bool is_smaller_than_nothing(const int sep_index)
+inline bool is_smaller_than_nothing(const size_t sep_index)
 {
     // if sep_index refers to "_rc", "_pre", "_beta" or "_alpha", return true.
     // If an ebuild has a version string v, then v' = v + (any of the separators above) + (whatever else) makes the version v' smaller
@@ -33,57 +33,66 @@ inline bool is_smaller_than_nothing(const int sep_index)
     return 1 <= sep_index and sep_index <= 4;
 }
 
-EbuildVersion::EbuildVersion(string ver): version(ver)
+EbuildVersion::EbuildVersion(string ver)
 {
-    valid = regex_match(version, ver_regexp);
+    set_version_str(ver);
+}
 
-    if(valid)
+void EbuildVersion::set_version_str(std::string ver)
+{
+    version = ver;
+    if(ver.empty())
     {
-        vector<pair<int, string>> split = split_string(version, ordered_separators, dot_index);
-
-        long letter_number = 0, number = 0;
-        unsigned long processed_chars = 0;
-        bool letter_found = false;
-
-        // convert split to version_parsing
-        for(pair<int, string> &couple: split)
-        {
-            if(couple.second.empty())
-            {
-                version_parsing.emplace_back(couple.first, 0);
-                continue;
-            }
-
-            letter_found = isalpha(couple.second.back(), locale("C"));
-            if(letter_found)
-            {
-                if(couple.first != dot_index)
-                    throw "something is wrong with this version string: " + version;
-
-                letter_number = couple.second.back();
-                couple.second = couple.second.substr(0, couple.second.size()-1);
-            }
-
-            number = stol(couple.second, &processed_chars);
-            if(processed_chars == couple.second.size())
-            {
-              version_parsing.emplace_back(couple.first, number);
-              if(letter_found)
-                  version_parsing.emplace_back(dot_index, letter_number);
-            }
-            else throw "the following string couldn't be converted entirely to an integer: " + couple.second;
-
-        }
+        version_parsing.clear();
+        return;
     }
-    else
+
+    if(not regex_match(version, ver_regexp))
+        throw runtime_error("Version string of invalid format : " + version);
+
+
+    vector<pair<size_t, string>> split = split_string(version, ordered_separators, dot_index);
+
+    long letter_number = 0, number = 0;
+    unsigned long processed_chars = 0;
+    bool letter_found = false;
+
+    // convert split to version_parsing
+    for(pair<size_t, string> &couple: split)
     {
-        throw "Version string of invalid format : " + version;
+        if(couple.second.empty())
+        {
+            version_parsing.emplace_back(couple.first, 0);
+            continue;
+        }
+
+        letter_found = isalpha(couple.second.back(), locale("C"));
+        if(letter_found)
+        {
+            if(couple.first != dot_index)
+                throw runtime_error("something is wrong with this version string: " + version);
+
+            letter_number = couple.second.back();
+            couple.second = couple.second.substr(0, couple.second.size()-1);
+        }
+
+        number = stol(couple.second, &processed_chars);
+        if(processed_chars == couple.second.size())
+        {
+          version_parsing.emplace_back(couple.first, number);
+          if(letter_found)
+              version_parsing.emplace_back(dot_index, letter_number);
+        }
+        else throw runtime_error("the following string couldn't be converted entirely to an integer: " + couple.second);
+
     }
 }
 
-bool EbuildVersion::operator < (const EbuildVersion &other)
+
+bool operator < (const EbuildVersion &a, const EbuildVersion &b)
 {
-    /* we lexicographically compare the two version_parsing variables at same size. If they are equal, we check the next subversion in the longer one to know if it's newer
+    /* returns true if this < 1.23
+     * we lexicographically compare the two version_parsing variables at same size. If they are equal, we check the next subversion in the longer one to know if it's newer
      *  examples:
      *      [(".", 1), (".", 2)] < [(".", 1), (".", 3)] aka     1.2 < 1.3
      *      [(".", 1)] < [(".", 1), ("_p", 1)]          aka     1 < 1_p1
@@ -92,20 +101,135 @@ bool EbuildVersion::operator < (const EbuildVersion &other)
      *      Note: "-r", ".", "_rc" are actually referenced by their integer priority, given by their index in ordered_separators
      *      */
 
-    const size_t min_size = min(version_parsing.size(), other.version_parsing.size());
-    const auto res = lexicographical_compare_three_way(version_parsing.cbegin(),        version_parsing.cbegin() + min_size,
-                                                       other.version_parsing.cbegin(),  other.version_parsing.cbegin() + min_size);
+    const size_t min_size = min(a.version_parsing.size(), b.version_parsing.size());
+    const auto res = lexicographical_compare_three_way(a.version_parsing.cbegin(),  a.version_parsing.cbegin() + min_size,
+                                                       b.version_parsing.cbegin(),  b.version_parsing.cbegin() + min_size);
 
-    bool result = res == strong_ordering::less or (
-                            res == strong_ordering::equal and (
-                                    (version_parsing.size() > min_size and is_smaller_than_nothing(version_parsing[min_size].first)) or
-                                    (other.version_parsing.size() > min_size and not is_smaller_than_nothing(other.version_parsing[min_size].first))
+    bool result = res < 0 or (
+                            res == 0 and (
+                                    (a.version_parsing.size() > min_size and is_smaller_than_nothing(a.version_parsing[min_size].first)) or
+                                    (b.version_parsing.size() > min_size and not is_smaller_than_nothing(b.version_parsing[min_size].first))
                             ));
 
-    if(res == strong_ordering::equal and (version_parsing.size() > min_size or other.version_parsing.size() > min_size))
+    if(res == 0 and (a.version_parsing.size() > min_size or b.version_parsing.size() > min_size))
     {
         cout << "Found our case!" << endl;
     }
 
     return result;
+}
+
+bool operator <= (const EbuildVersion &a, const EbuildVersion &b)
+{
+    // returns true if this <= 1.23
+
+    const size_t min_size = min(a.version_parsing.size(), b.version_parsing.size());
+    const auto res = lexicographical_compare_three_way(a.version_parsing.cbegin(),  a.version_parsing.cbegin() + min_size,
+                                                       b.version_parsing.cbegin(),  b.version_parsing.cbegin() + min_size);
+
+    bool result = res <= 0 or (
+                            res == 0 and (
+                                    (a.version_parsing.size() > min_size and is_smaller_than_nothing(a.version_parsing[min_size].first)) or
+                                    (b.version_parsing.size() > min_size and not is_smaller_than_nothing(b.version_parsing[min_size].first))
+                            ));
+
+    return result;
+}
+
+bool operator >  (const EbuildVersion &a, const EbuildVersion &b)
+{
+    // returns true if this > 1.23
+
+    return not (a <= b);
+
+}
+
+bool operator >= (const EbuildVersion &a, const EbuildVersion &b)
+{
+    // returns true if this >= 1.23
+
+    return not (a < b);
+}
+
+bool operator == (const EbuildVersion &a, const EbuildVersion &b)
+{
+    // returns true if this = 1.23
+
+    if(a.version_parsing.size() != b.version_parsing.size())
+        return false;
+
+    const auto res = lexicographical_compare_three_way(a.version_parsing.cbegin(),  a.version_parsing.cend(),
+                                                       b.version_parsing.cbegin(),  b.version_parsing.cend());
+
+    return res == 0;
+
+}
+
+bool operator *= (const EbuildVersion &a, const EbuildVersion &b)
+{
+    // returns true if this matches with =1.23*
+
+    // 1.2 does not match with =1.2.3*
+    if(a.version_parsing.size() < b.version_parsing.size())
+        return false;
+
+    const size_t min_size = b.version_parsing.size();
+    const auto res = lexicographical_compare_three_way(a.version_parsing.cbegin(),  a.version_parsing.cbegin() + min_size,
+                                                       b.version_parsing.cbegin(),  b.version_parsing.cbegin() + min_size);
+
+    return res == 0;
+
+}
+
+bool operator ^= (const EbuildVersion &a, const EbuildVersion &b)
+{
+    // returns true if this ~ 1.23
+
+    size_t rev_sep_index = index_of(a.ordered_separators, string("-r"));
+
+    // we compare packages without revision numbers. e.g. [(".", 1), (".", 2), ("-r", 1)] -> [(".", 1), (".", 2)]
+    const size_t size = a.version_parsing.back().first == rev_sep_index ? a.version_parsing.size() - 1 : a.version_parsing.size();
+    const size_t other_size = b.version_parsing.back().first == rev_sep_index ? b.version_parsing.size() - 1 : b.version_parsing.size();
+
+    // when the revision numbers are omitted, the version parsings should have the same length
+    if(size != other_size)
+        return false;
+
+    const auto res = lexicographical_compare_three_way(a.version_parsing.cbegin(),  a.version_parsing.cbegin() + size,
+                                                       b.version_parsing.cbegin(),  b.version_parsing.cbegin() + size);
+
+    return res == 0;
+
+}
+
+bool respects_constraint(const EbuildVersion &ver, const VersionConstraint &constraint)
+{
+    switch (constraint.type) {
+    case VersionConstraint::Type::NONE:
+        return true;
+        break;
+    case VersionConstraint::Type::SLESS:
+        return ver < constraint.version;
+        break;
+    case VersionConstraint::Type::LESS:
+        return ver <= constraint.version;
+        break;
+    case VersionConstraint::Type::EQ_REV:
+        return ver ^= constraint.version;
+        break;
+    case VersionConstraint::Type::EQ_STAR:
+        return ver *= constraint.version;
+        break;
+    case VersionConstraint::Type::EQ:
+        return ver == constraint.version;
+        break;
+    case VersionConstraint::Type::GREATER:
+        return ver >= constraint.version;
+        break;
+    case VersionConstraint::Type::SGREATER:
+        return ver > constraint.version;
+        break;
+    }
+
+    throw runtime_error("Version constraint check failed.");
 }

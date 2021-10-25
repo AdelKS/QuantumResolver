@@ -2,14 +2,14 @@
 
 using namespace std;
 
-template <class Name, class Object, bool sort>
-IndexedVector<Name, Object, sort>::IndexedVector()
+template <class Name, class Object>
+IndexedVector<Name, Object>::IndexedVector()
 {
 
 }
 
-template <class Name, class Object, bool sort>
-Object& IndexedVector<Name, Object, sort>::operator [](Name name)
+template <class Name, class Object>
+Object& IndexedVector<Name, Object>::operator [](Name name)
 {
     auto it = name_to_index.find(name);
     if(it != name_to_index.end())
@@ -23,8 +23,8 @@ Object& IndexedVector<Name, Object, sort>::operator [](Name name)
     }
 }
 
-template <class Name, class Object, bool sort>
-int IndexedVector<Name, Object, sort>::index_of(Name name)
+template <class Name, class Object>
+size_t IndexedVector<Name, Object>::index_of(Name name) const
 {
     auto it = name_to_index.find(name);
     if( it != name_to_index.end())
@@ -32,58 +32,44 @@ int IndexedVector<Name, Object, sort>::index_of(Name name)
     else return npos;
 }
 
-template <class Name, class Object, bool sort>
-int IndexedVector<Name, Object, sort>::new_object(Name name)
+template <class Name, class Object>
+size_t IndexedVector<Name, Object>::new_object(Name name)
 {
     // Push new object to back
-    int i = objects.size();
+    size_t index = objects.size();
     objects.push_back(Object(name));
+    objects.back().set_id(index);
 
-    // this if condition is computed at compile-time
-    if constexpr (sort)
-    {
-        // when sort is true
-        // buble sort the object to its final position        
-
-        while(i > 1 and objects[i] < objects[i-1])
-        {
-            Object tmp = objects[i];
-            objects[i] = objects[i-1];
-            objects[i-1] = tmp;
-            --i;
-        }
-    }
-
-    name_to_index[name] = i;
-    return i;
+    name_to_index[name] = index;
+    return index;
 }
 
-template <class Name, class Object, bool sort>
-Object& IndexedVector<Name, Object, sort>::operator [](int i)
+template <class Name, class Object>
+Object& IndexedVector<Name, Object>::operator [](size_t i)
 {
     return objects[i];
 }
 
-template <class Name, class Object, bool sort>
-Object& IndexedVector<Name, Object, sort>::back()
+template <class Name, class Object>
+Object& IndexedVector<Name, Object>::back()
 {
     return objects.back();
 }
 
-template <class Name, class Object, bool sort>
-int IndexedVector<Name, Object, sort>::size()
+template <class Name, class Object>
+size_t IndexedVector<Name, Object>::size()
 {
     return objects.size();
 }
 
-template <class Name, class Object, bool sort>
-bool IndexedVector<Name, Object, sort>::contains(Name str)
+template <class Name, class Object>
+bool IndexedVector<Name, Object>::contains(Name str)
 {
     return name_to_index.contains(str);
 }
 
-template <class Name, class Object, bool sort>
-bool IndexedVector<Name, Object, sort>::empty()
+template <class Name, class Object>
+bool IndexedVector<Name, Object>::empty()
 {
     return objects.empty();
 }
