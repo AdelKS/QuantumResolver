@@ -3,10 +3,13 @@ CONFIG += console c++2a
 CONFIG -= app_bundle
 CONFIG -= qt
 
-TARGET = quantumresolve
+TARGET = quantum
 
-QMAKE_CFLAGS += -march=native
-QMAKE_CXXFLAGS += -march=native
+Release:QMAKE_CFLAGS += -march=native -O3
+Release:QMAKE_CXXFLAGS += -march=native -O3
+
+Debug:QMAKE_CFLAGS += -march=native
+Debug:QMAKE_CXXFLAGS += -march=native
 
 SOURCES += \
         src/database.cpp \

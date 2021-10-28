@@ -6,16 +6,11 @@
 #include "ebuild.h"
 #include "indexedvector.h"
 
-struct PackageConstraint
-{
-    size_t pkg_id;
-    VersionConstraint ver;
-};
-
 class Package
 {
 public:
     Package(std::string pkg_group_name);
+
     Ebuild &add_version(const std::string &version);
 
     const string &get_pkg_name();
@@ -31,7 +26,6 @@ protected:
     size_t pkg_id;
 
     IndexedVector<std::string, Ebuild> ebuilds; // indexed by ver, e.g. 11.1.0-r1
-
 };
 
 #endif // PACKAGE_H

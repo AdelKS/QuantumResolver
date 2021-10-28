@@ -16,14 +16,15 @@ public:
 
     void populate_from_cache_dir(std::string path);
 
-    std::unordered_map<std::size_t, bool> parse_useflags(const string_view &useflags_str, bool default_state, bool create_ids = false);
-
     static const size_t npos = -1;
 
 protected:
+    std::unordered_map<std::size_t, bool> parse_useflags(const string_view &useflags_str, bool default_state, bool create_ids = false);
+    std::vector<UseflagConstraint> parse_useflag_constraints(string_view useflags_constraint_str);
+    PackageConstraint parse_pkg_constraint(string_view pkg_constraint_str);
     std::size_t get_useflag_id(const string &useflag_str, bool create_ids = false);
 
-    void add_dependencies_to_ebuild(const string &dep_string, Ebuild &ebuild);
+    Dependencies parse_dependencies(string_view dep_string);
 
     void account_for_global_useflags();
     void account_for_user_useflags();

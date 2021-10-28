@@ -35,23 +35,22 @@ inline bool is_smaller_than_nothing(const size_t sep_index)
 
 EbuildVersion::EbuildVersion(string ver)
 {
-    set_version_str(ver);
+    set_version(ver);
 }
 
-void EbuildVersion::set_version_str(std::string ver)
+void EbuildVersion::set_version(std::string ver)
 {
-    version = ver;
     if(ver.empty())
     {
         version_parsing.clear();
         return;
     }
 
-    if(not regex_match(version, ver_regexp))
-        throw runtime_error("Version string of invalid format : " + version);
+    if(not regex_match(ver, ver_regexp))
+        throw runtime_error("Version string of invalid format : " + ver);
 
 
-    vector<pair<size_t, string>> split = split_string(version, ordered_separators, dot_index);
+    vector<pair<size_t, string>> split = split_string(ver, ordered_separators, dot_index);
 
     long letter_number = 0, number = 0;
     unsigned long processed_chars = 0;
@@ -70,7 +69,7 @@ void EbuildVersion::set_version_str(std::string ver)
         if(letter_found)
         {
             if(couple.first != dot_index)
-                throw runtime_error("something is wrong with this version string: " + version);
+                throw runtime_error("something is wrong with this version string: " + ver);
 
             letter_number = couple.second.back();
             couple.second = couple.second.substr(0, couple.second.size()-1);
@@ -110,11 +109,6 @@ bool operator < (const EbuildVersion &a, const EbuildVersion &b)
                                     (a.version_parsing.size() > min_size and is_smaller_than_nothing(a.version_parsing[min_size].first)) or
                                     (b.version_parsing.size() > min_size and not is_smaller_than_nothing(b.version_parsing[min_size].first))
                             ));
-
-    if(res == 0 and (a.version_parsing.size() > min_size or b.version_parsing.size() > min_size))
-    {
-        cout << "Found our case!" << endl;
-    }
 
     return result;
 }

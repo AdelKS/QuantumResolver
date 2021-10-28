@@ -17,6 +17,8 @@ public:
     size_t size();
     bool empty();
     Object& back();
+    auto begin();
+    auto end();
     size_t index_of(Name name) const;
     bool contains(Name name);
     virtual size_t new_object(Name name);

@@ -24,6 +24,18 @@ Object& IndexedVector<Name, Object>::operator [](Name name)
 }
 
 template <class Name, class Object>
+auto IndexedVector<Name, Object>::begin()
+{
+    return objects.begin();
+}
+
+template <class Name, class Object>
+auto IndexedVector<Name, Object>::end()
+{
+    return objects.end();
+}
+
+template <class Name, class Object>
 size_t IndexedVector<Name, Object>::index_of(Name name) const
 {
     auto it = name_to_index.find(name);

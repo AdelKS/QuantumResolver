@@ -15,8 +15,9 @@
 std::string exec(const char* cmd);
 size_t pkg_namever_split_pos(const std::string &name_ver);
 
-std::vector<std::pair<size_t, std::string>> split_string(const std::string &str, const std::vector<std::string> &separators, const size_t first_variable_sep_index = 0);
+void skim_spaces_at_the_edges(std::string_view &str);
+std::string_view get_pth_enclosed_string_view(const std::string_view &str_view);
 
-PackageConstraint parse_pkg_constraint(const string_view &pkg_constraint_str, const IndexedVector<string, Package> &pkgs);
+std::vector<std::pair<size_t, std::string>> split_string(const std::string &str, const std::vector<std::string> &separators, const size_t first_variable_sep_index = 0);
 
 #endif // UTILS_H

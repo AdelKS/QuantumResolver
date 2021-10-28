@@ -44,7 +44,7 @@ Ebuild& Package::add_version(const string &version)
 void Package::update_useflags_with_constraints(const VersionConstraint &constraint,
                                                std::unordered_map<size_t, bool> useflag_states)
 {
-    for(size_t ebuild_id = 0; ebuild_id < ebuilds.size() ; ebuild_id++)
-        if(respects_constraint(ebuilds[ebuild_id].get_version(), constraint))
-            ebuilds[ebuild_id].assign_useflag_states(useflag_states);
+    for(auto &ebuild: ebuilds)
+        if(respects_constraint(ebuild.get_version(), constraint))
+            ebuild.assign_useflag_states(useflag_states);
 }

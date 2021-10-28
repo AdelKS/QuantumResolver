@@ -18,6 +18,19 @@ string exec(const char* cmd) {
     return result;
 }
 
+void skim_spaces_at_the_edges(std::string_view &str)
+{
+    // remove spaces at the beginning, if there are any
+    // if str is made of only spaces, the resulting view is empty
+
+    if(str.starts_with(' '))
+        str.remove_prefix(min(str.find_first_not_of(' '), str.size()));
+
+    // remove spaces at the end, if there are any
+    if(not str.empty() and str.ends_with(' '))
+        str.remove_suffix(str.size() - 1 - str.find_last_not_of(' '));
+}
+
 size_t pkg_namever_split_pos(const string &name_ver)
 {
     bool found = false;
@@ -101,77 +114,29 @@ vector<pair<size_t, string>> split_string(const string &str, const vector<string
     return split;
 }
 
-
-PackageConstraint parse_pkg_constraint(const string_view &pkg_constraint_str, const IndexedVector<string, Package> &pkgs)
+string_view get_pth_enclosed_string_view(const string_view &str_view)
 {
-    if(pkg_constraint_str.ends_with('*') and not pkg_constraint_str.starts_with('='))
-        throw runtime_error("Met weird package version constraint: " + string(pkg_constraint_str));
+    // str_view needs to start with an open parenthesis '('
+    // returns the string between the character after the opening parenthesis
+    // till the corresponding closing parenthesis ')' (not included)
 
-    PackageConstraint pkg_constraint;
-    string pkg_group_namever;
-    string pkg_group_name;
-    string pkg_ver;
+    if(not str_view.starts_with('('))
+        throw runtime_error("String does not start with a parenthesis: " + string(str_view));
 
-    if(pkg_constraint_str.starts_with("<="))
+    size_t pth_num = 1;
+    size_t index = 0; // index is incremented first
+
+    while(pth_num != 0 and index < str_view.size())
     {
-        pkg_constraint.ver.type = VersionConstraint::Type::LESS;
-        pkg_group_namever = pkg_constraint_str.substr(2);
-    }
-    else if(pkg_constraint_str.starts_with(">="))
-    {
-        pkg_constraint.ver.type = VersionConstraint::Type::GREATER;
-        pkg_group_namever = pkg_constraint_str.substr(2);
-    }
-    else if(pkg_constraint_str.starts_with('<'))
-    {
-        pkg_constraint.ver.type = VersionConstraint::Type::SLESS;
-        pkg_group_namever = pkg_constraint_str.substr(1);
-    }
-    else if(pkg_constraint_str.starts_with('>'))
-    {
-        pkg_constraint.ver.type = VersionConstraint::Type::SGREATER;
-        pkg_group_namever = pkg_constraint_str.substr(1);
-    }
-    else if(pkg_constraint_str.starts_with('~'))
-    {
-        pkg_constraint.ver.type = VersionConstraint::Type::EQ_REV;
-        pkg_group_namever = pkg_constraint_str.substr(1);
-    }
-    else if(pkg_constraint_str.starts_with('='))
-    {
-        if(pkg_constraint_str.ends_with('*'))
-        {
-            pkg_constraint.ver.type = VersionConstraint::Type::EQ_STAR;
-            pkg_group_namever = pkg_constraint_str.substr(2, pkg_constraint_str.size()-4);
-        }
-        else
-        {
-            pkg_constraint.ver.type = VersionConstraint::Type::EQ;
-            pkg_group_namever = pkg_constraint_str.substr(2);
-        }
-    }
-    else
-    {
-        pkg_constraint.ver.type = VersionConstraint::Type::NONE;
-        pkg_group_name = pkg_constraint_str;
+        index++;
+        if(str_view[index] == '(')
+            pth_num++;
+        else if(str_view[index] == ')')
+            pth_num--;
     }
 
-    if(pkg_constraint.ver.type != VersionConstraint::Type::NONE)
-    {
-        size_t split_pos = pkg_namever_split_pos(pkg_group_namever);
-        pkg_group_name = pkg_group_namever.substr(0, split_pos);
-        pkg_ver = pkg_group_namever.substr(split_pos+1);
+    if(index == str_view.size())
+        throw runtime_error("No closing parenthesis in this string: " + string(str_view));
 
-        // TODO: deal with use flag and slots/subslot constraints
-
-        pkg_constraint.ver.version.set_version_str(pkg_ver);
-    }
-
-
-
-    pkg_constraint.pkg_id = pkgs.index_of(pkg_group_name);
-    if(pkg_constraint.pkg_id == pkgs.npos)
-        cout << "Package not found while reading user per-package use flags: " + pkg_group_name << endl;
-
-    return pkg_constraint;
+    return str_view.substr(1, index-1);
 }

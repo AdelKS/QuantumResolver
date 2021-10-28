@@ -9,7 +9,7 @@ Ebuild::Ebuild(string ver): eversion(ver)
 
 void Ebuild::add_useflag(size_t flag_id, bool default_state)
 {
-    useflags[flag_id] = default_state;
+    ebuild_useflags[flag_id] = default_state;
 }
 
 void Ebuild::add_useflags(std::unordered_map<std::size_t, bool> useflags_and_default_states)
@@ -22,8 +22,8 @@ void Ebuild::add_useflags(std::unordered_map<std::size_t, bool> useflags_and_def
 
 void Ebuild::assign_useflag_state(size_t flag_id, bool state)
 {
-    auto flag_iter = useflags.find(flag_id);
-    if(flag_iter != useflags.end())
+    auto flag_iter = ebuild_useflags.find(flag_id);
+    if(flag_iter != ebuild_useflags.end())
         flag_iter->second = state;
 
 }
@@ -64,4 +64,18 @@ bool Ebuild::operator <(const Ebuild &other)
 const EbuildVersion &Ebuild::get_version()
 {
     return eversion;
+}
+
+void Ebuild::add_deps(const Dependencies &deps, Dependencies::Type dep_type)
+{
+    Dependencies &m_deps = dep_type == Dependencies::Type::BUILD ? bdeps : rdeps;
+
+    for(const auto &dep: deps.or_deps)
+        m_deps.or_deps.push_back(dep);
+
+    for(const auto &dep: deps.plain_deps)
+        m_deps.plain_deps.push_back(dep);
+
+    for(const auto &dep: deps.use_cond_deps)
+        m_deps.use_cond_deps.push_back(dep);
 }

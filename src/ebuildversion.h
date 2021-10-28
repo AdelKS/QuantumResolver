@@ -11,7 +11,7 @@ class EbuildVersion
 {
 public:
     EbuildVersion(std::string ver = std::string());
-    void set_version_str(std::string ver);
+    void set_version(std::string ver);
 
     friend bool operator <  (const EbuildVersion &a, const EbuildVersion &b); // returns true if this < 1.23
     friend bool operator <= (const EbuildVersion &a, const EbuildVersion &b); // returns true if this <= 1.23
@@ -22,7 +22,6 @@ public:
     friend bool operator ^= (const EbuildVersion &a, const EbuildVersion &b); // returns true if this ~ 1.23
 
 protected:
-    std::string version;
     std::vector<std::pair<size_t, long>> version_parsing; // see operator <
 
     const static std::vector<std::string> ordered_separators;
