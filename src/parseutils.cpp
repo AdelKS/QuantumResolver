@@ -1,9 +1,11 @@
-#include "utils.h"
+#include "parseutils.h"
 
 #include <iostream>
 #include <cstring>
+#include <fstream>
 
 using namespace std;
+namespace fs = filesystem;
 
 string exec(const char* cmd) {
     array<char, 128> buffer;
@@ -31,7 +33,7 @@ void skim_spaces_at_the_edges(std::string_view &str)
         str.remove_suffix(str.size() - 1 - str.find_last_not_of(' '));
 }
 
-size_t pkg_namever_split_pos(const string &name_ver)
+size_t pkg_namever_split_pos(const string_view &name_ver)
 {
     bool found = false;
     size_t last_dash = 0, before_last_dash = 0;
@@ -44,7 +46,7 @@ size_t pkg_namever_split_pos(const string &name_ver)
         }
 
     if(not found or last_dash + 1 == name_ver.size()) // last '-' cannot be at the end of the string
-        throw runtime_error("Error splitting " + name_ver);
+        throw runtime_error("Error splitting " + string(name_ver));
     else if(name_ver[last_dash+1] == 'r') // this a revision number
         return before_last_dash;
     else return last_dash;
@@ -60,6 +62,8 @@ vector<pair<size_t, string>> split_string(const string &str, const vector<string
      *  the returned vector would be [(666, "5"), (0, "12"), (0, "3"), (2, "324"), (1, "32"), (3, "23")]
      *  where the first index of each couple is the index of the matched separator 0 -> ".", 1 -> "_p", 2 -> "_pre", 3 -> "-r
      * */
+
+    // TODO: use string views and starts_with()
 
     const size_t N = str.size();
     size_t n;
@@ -139,4 +143,41 @@ string_view get_pth_enclosed_string_view(const string_view &str_view)
         throw runtime_error("No closing parenthesis in this string: " + string(str_view));
 
     return str_view.substr(1, index-1);
+}
+
+deque<fs::path> get_regular_files(const fs::path &path)
+{
+    deque<fs::path> regular_files;
+    if(fs::is_regular_file(path))
+        regular_files.push_back(path);
+    else if(fs::is_directory(path))
+        for(const auto &file: fs::directory_iterator(path))
+            if(fs::is_regular_file(file))
+                regular_files.push_back(file);
+
+    return regular_files;
+}
+
+deque<string> read_file_lines(const fs::path file_path, bool omit_comments_and_empty, size_t max_line_size)
+{
+    /* Reads the lines of the file referenced by file_path
+     * and returns them.
+     * Note: Spaces at the beginning and end of each line are removed
+     * */
+    fstream file(file_path, ios::in);
+    if(not file.is_open())
+        throw runtime_error("Couldn't open parent file" + file_path.string());
+
+    char line[max_line_size];
+    deque<string> file_lines;
+
+    while(file.getline(line, max_line_size, '\n'))
+    {
+        string_view view(line);
+        skim_spaces_at_the_edges(view);
+        if(not omit_comments_and_empty or (not view.starts_with("#") and not view.empty()))
+            file_lines.emplace_back(string(view));
+    }
+
+    return file_lines;
 }

@@ -11,7 +11,8 @@ int main(int argc, char *argv[])
     Database database;
     try
     {
-        database.populate_from_cache_dir("/var/db/repos/gentoo/metadata/md5-cache");
+        database.populate("/var/db/repos/gentoo/metadata/md5-cache");
+        cout << "Done populating!" << endl;
     }
     catch(runtime_error &err)
     {

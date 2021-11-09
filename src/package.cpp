@@ -3,15 +3,18 @@
 #include "package.h"
 
 using namespace std;
+namespace fs = filesystem;
 
-Package::Package(string pkg_group_name): pkg_name(pkg_group_name)
+Package::Package(std::string pkg_group_name,
+                 std::shared_ptr<Parser> parser):
+    pkg_group_name(pkg_group_name), parser(parser)
 {
 
 }
 
 const string &Package::get_pkg_name()
 {
-    return pkg_name;
+    return pkg_group_name;
 }
 
 void Package::set_id(size_t pkg_id)
@@ -19,24 +22,38 @@ void Package::set_id(size_t pkg_id)
     this->pkg_id = pkg_id;
 }
 
-Ebuild &Package::get_ebuild(const string &ver)
+size_t Package::get_id()
 {
-    size_t index = ebuilds.index_of(ver);
+    return pkg_id;
+}
+
+void Package::parse_iuse()
+{
+    for(auto &ebuild: ebuilds)
+    {
+        ebuild.parse_iuse();
+    }
+}
+
+Ebuild &Package::operator[](const string &ver)
+{
+    size_t index = ebuilds.id_of(ver);
     if(index == ebuilds.npos)
-        throw runtime_error("version " + ver + "is not available in " + pkg_name);
+        throw runtime_error("version " + ver + "is not available in " + pkg_group_name);
     else return ebuilds[index];
 }
 
-Ebuild &Package::get_ebuild(const size_t &id)
+Ebuild &Package::operator[](const size_t &id)
 {
     return ebuilds[id];
 }
 
 
-Ebuild& Package::add_version(const string &version)
+Ebuild& Package::add_version(const string &version, const fs::path &path)
 {
-    size_t index = ebuilds.new_object(version);
-    ebuilds[index].set_pkg_id(pkg_id);
+    size_t index = ebuilds.emplace_back(Ebuild(version, path, parser), version);
+    ebuilds.back().set_id(index);
+    ebuilds.back().set_pkg_id(pkg_id);
 
     return ebuilds[index];
 }

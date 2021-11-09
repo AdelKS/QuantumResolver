@@ -15,20 +15,22 @@ SOURCES += \
         src/database.cpp \
         src/ebuild.cpp \
         src/ebuildversion.cpp \
-        src/indexedvector.cpp \
         src/main.cpp \
+        src/namedvector.cpp \
         src/package.cpp \
-        src/resolver.cpp \
-        src/utils.cpp
+        src/parser.cpp \
+        src/parseutils.cpp \
+        src/resolver.cpp
 
 HEADERS += \
     src/database.h \
     src/ebuild.h \
     src/ebuildversion.h \
-    src/indexedvector.h \
+    src/namedvector.h \
     src/package.h \
-    src/resolver.h \
-    src/utils.h
+    src/parser.h \
+    src/parseutils.h \
+    src/resolver.h
 
 DISTFILES += \
     README.md \

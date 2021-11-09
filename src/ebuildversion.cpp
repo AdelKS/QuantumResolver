@@ -3,7 +3,7 @@
 #include <iostream>
 
 #include "ebuildversion.h"
-#include "utils.h"
+#include "parseutils.h"
 
 using namespace std;
 

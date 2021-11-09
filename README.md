@@ -21,7 +21,7 @@ make
 For a debug build
 
 ```shell
-qmake CONFIG+=debug QuantumResolver.pro
+qmake CONFIG+='debug sanitizer sanitize_address' QuantumResolver.pro
 make
 ```
 
