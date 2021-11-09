@@ -20,6 +20,7 @@ public:
 protected:
     void load_ebuilds(const std::string &path);
     void parse_iuse();
+    void parse_deps();
 
     void account_for_global_useflags();
     void account_for_user_useflags();

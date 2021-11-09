@@ -5,14 +5,13 @@
 using namespace std;
 
 Ebuild::Ebuild(const string &ver,
-               const filesystem::path &path,
+               std::deque<string> &&ebuild_lines,
                shared_ptr<Parser> parser):
-    eversion(ver), ebuild_path(path), parser(parser), masked(false)
+    eversion(ver), parser(parser), masked(false), ebuild_lines(move(ebuild_lines))
 {
-    ebuild_lines = read_file_lines(ebuild_path, {"IUSE", "DEPEND"});
 }
 
-void Ebuild::parse_dep_string()
+void Ebuild::parse_deps()
 {
     for(string_view ebuild_line_view: ebuild_lines)
     {

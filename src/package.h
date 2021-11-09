@@ -14,9 +14,10 @@ public:
     Package(std::string pkg_group_name,
             std::shared_ptr<Parser> parser);
 
-    Ebuild &add_version(const std::string &version, const std::filesystem::path &path);
+    Ebuild &add_version(const std::string &version, deque<string> &&ebuild_lines);
 
     void parse_iuse();
+    void parse_deps();
 
     const string &get_pkg_name();
 

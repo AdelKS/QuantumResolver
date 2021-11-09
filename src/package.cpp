@@ -29,10 +29,14 @@ size_t Package::get_id()
 
 void Package::parse_iuse()
 {
+    for(auto &ebuild: ebuilds)    
+        ebuild.parse_iuse();    
+}
+
+void Package::parse_deps()
+{
     for(auto &ebuild: ebuilds)
-    {
-        ebuild.parse_iuse();
-    }
+        ebuild.parse_deps();
 }
 
 Ebuild &Package::operator[](const string &ver)
@@ -49,9 +53,9 @@ Ebuild &Package::operator[](const size_t &id)
 }
 
 
-Ebuild& Package::add_version(const string &version, const fs::path &path)
+Ebuild& Package::add_version(const string &version, deque<string> &&ebuild_lines)
 {
-    size_t index = ebuilds.emplace_back(Ebuild(version, path, parser), version);
+    size_t index = ebuilds.emplace_back(Ebuild(version, move(ebuild_lines), parser), version);
     ebuilds.back().set_id(index);
     ebuilds.back().set_pkg_id(pkg_id);
 

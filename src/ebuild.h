@@ -27,11 +27,11 @@ class Ebuild
 
 public:
     Ebuild(const std::string &ver,
-           const std::filesystem::path &path,
+           std::deque<string> &&ebuild_lines,
            std::shared_ptr<Parser> parser);
 
     bool operator <(const Ebuild &other);
-    void parse_dep_string();
+    void parse_deps();
     void parse_iuse();
 
     void assign_useflag_state(size_t flag_id, bool state);
@@ -55,7 +55,6 @@ protected:
     void add_useflags(std::unordered_map<std::size_t, bool> useflags_and_default_states);
 
     EbuildVersion eversion;
-    std::filesystem::path ebuild_path;
     std::shared_ptr<Parser> parser;
     bool masked;
 

@@ -45,7 +45,7 @@ void Database::load_ebuilds(const std::string &path)
         }
 
         Package &pkg = (*pkgs)[pkg_id];
-        pkg.add_version(pkg_ver, entry.path());
+        pkg.add_version(pkg_ver, read_file_lines(entry.path()));
     }
 }
 
@@ -189,9 +189,22 @@ void Database::parse_iuse()
         pkg.parse_iuse();
 }
 
+void Database::parse_deps()
+{
+    for(auto &pkg: *pkgs)
+        pkg.parse_deps();
+}
+
 void Database::populate(const std::string &overlay_cache_path)
 {
+    auto start = high_resolution_clock::now();
+
     load_ebuilds(overlay_cache_path);
     parse_iuse();
+    parse_deps();
+
+    auto duration = duration_cast<milliseconds>(high_resolution_clock::now() - start);
+    cout << "It took " << duration.count() << "ms to read ::gentoo cache" << endl;
+
     load_profile_settings();
 }
