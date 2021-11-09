@@ -158,7 +158,10 @@ deque<fs::path> get_regular_files(const fs::path &path)
     return regular_files;
 }
 
-deque<string> read_file_lines(const fs::path file_path, bool omit_comments_and_empty, size_t max_line_size)
+deque<string> read_file_lines(const std::filesystem::path file_path,
+                              std::deque<std::string> starts_with,
+                              bool omit_comments_and_empty,
+                              size_t max_line_size)
 {
     /* Reads the lines of the file referenced by file_path
      * and returns them.
@@ -176,7 +179,18 @@ deque<string> read_file_lines(const fs::path file_path, bool omit_comments_and_e
         string_view view(line);
         skim_spaces_at_the_edges(view);
         if(not omit_comments_and_empty or (not view.starts_with("#") and not view.empty()))
-            file_lines.emplace_back(string(view));
+        {
+            if(starts_with.empty())
+                file_lines.emplace_back(string(view));
+            else for(const string &start_line: starts_with)
+            {
+                if(view.starts_with(start_line))
+                {
+                    file_lines.emplace_back(string(view));
+                    break;
+                }
+            }
+        }
     }
 
     return file_lines;
