@@ -4,15 +4,22 @@
 
 using namespace std;
 
-Ebuild::Ebuild(const string &ver,
-               std::deque<string> &&ebuild_lines,
-               shared_ptr<Parser> parser):
-    eversion(ver), parser(parser), masked(false), ebuild_lines(move(ebuild_lines))
+Ebuild::Ebuild(const std::string &ver,
+               const std::filesystem::path &ebuild_path,
+               shared_ptr<Parser> &parser):
+    eversion(ver), parser(parser), masked(false), parsed_metadata(false), parsed_deps(false),
+    ebuild_path(ebuild_path), version_type(VersionType::LIVE)
 {
 }
 
 void Ebuild::parse_deps()
 {
+    if(parsed_deps)
+        return;
+
+    if(ebuild_lines.empty())
+        ebuild_lines = read_file_lines(ebuild_path);
+
     for(string_view ebuild_line_view: ebuild_lines)
     {
         if(ebuild_line_view.starts_with("DEPEND"))
@@ -36,10 +43,18 @@ void Ebuild::parse_deps()
             add_deps(parse_dep_string(ebuild_line_view), Dependencies::Type::RUNTIME);
         }
     }
+
+    parsed_deps = true;
 }
 
 void Ebuild::parse_metadata()
 {
+    if(parsed_metadata)
+        return;
+
+    if(ebuild_lines.empty())
+        ebuild_lines = read_file_lines(ebuild_path);
+
     for(string_view ebuild_line_view: ebuild_lines)
     {
         if(ebuild_line_view.starts_with("IUSE"))
@@ -47,7 +62,7 @@ void Ebuild::parse_metadata()
             // shrink by 5 to remove the "IUSE=" in the beginning
             ebuild_line_view.remove_prefix(5);
             auto flag_states = parser->parse_useflags(ebuild_line_view, false, true);
-            add_useflags(flag_states);
+            add_iuse_flags(flag_states);
             break;
         }
         else if(ebuild_line_view.starts_with("SLOT"))
@@ -71,26 +86,30 @@ void Ebuild::parse_metadata()
             const auto &keywords = parser->parse_keywords(ebuild_line_view);
             for(const auto &[keyword_id, is_testing]: keywords)
             {
-                if(global_useflags.contains(keyword_id))
+                if(flag_states.contains(keyword_id))
                 {
-                    testing = is_testing;
+                    version_type = is_testing ? VersionType::TESTING : VersionType::STABLE;
                     break;
                 }
             }
         }
     }
+
+    parsed_metadata = true;
 }
 
-void Ebuild::add_useflag(size_t flag_id, bool default_state)
+void Ebuild::add_iuse_flag(size_t flag_id, bool default_state)
 {
-    ebuild_useflags[flag_id] = default_state;
+    iuse_flags.insert(flag_id);
+    if(not flag_states.contains(flag_id))
+        flag_states[flag_id] = default_state;
 }
 
-void Ebuild::add_useflags(std::unordered_map<std::size_t, bool> useflags_and_default_states)
+void Ebuild::add_iuse_flags(std::unordered_map<std::size_t, bool> useflags_and_default_states)
 {
-    for(const auto &flag_state_iter: useflags_and_default_states)
+    for(const auto &[flag_id, flag_state]: useflags_and_default_states)
     {
-        add_useflag(flag_state_iter.first, flag_state_iter.second);
+        add_iuse_flag(flag_id, flag_state);
     }
 }
 
@@ -98,25 +117,17 @@ void Ebuild::assign_useflag_state(size_t flag_id, bool state, const FlagAssignTy
 {
     if(assign_type == FlagAssignType::DIRECT)
     {
-        auto flag_iter = ebuild_useflags.find(flag_id);
-        if(flag_iter != ebuild_useflags.end())
-            flag_iter->second = state;
-        else
-        {
-            flag_iter = global_useflags.find(flag_id);
-            if(flag_iter != global_useflags.end())
-                flag_iter->second = state;
-        }
+       flag_states[flag_id] = state;
     }
     else if(assign_type == FlagAssignType::FORCE or
-            (assign_type == FlagAssignType::STABLE_FORCE and testing == false) )
+            (assign_type == FlagAssignType::STABLE_FORCE and version_type == VersionType::STABLE))
     {
         if(state)
             forced_flags.insert(flag_id);
         else forced_flags.erase(flag_id);
     }
     else if(assign_type == FlagAssignType::MASK or
-            (assign_type == FlagAssignType::STABLE_MASK and testing == false) )
+            (assign_type == FlagAssignType::STABLE_MASK and version_type == VersionType::STABLE))
     {
         if(state)
             masked_flags.insert(flag_id);
@@ -124,7 +135,7 @@ void Ebuild::assign_useflag_state(size_t flag_id, bool state, const FlagAssignTy
     }
 }
 
-void Ebuild::assign_useflag_states(UseflagStates useflag_states, const FlagAssignType &assign_type)
+void Ebuild::assign_useflag_states(const UseflagStates &useflag_states, const FlagAssignType &assign_type)
 {
     for(const auto &[flag_id, flag_state]: useflag_states)
     {
@@ -334,36 +345,73 @@ Dependencies Ebuild::parse_dep_string(string_view dep_string)
     return deps;
 }
 
+void Ebuild::print_flag_states(bool iuse_only)
+{
+    if(not parsed_metadata)
+        parse_metadata();
+
+    cout << parser->pkg_groupname(pkg_id) << "   Version: " << eversion.get_version() << endl;
+
+    cout << "  USE=\" ";
+    for(const auto &[flag_id, flag_state]: flag_states)
+        if(not iuse_only or iuse_flags.contains(flag_id))
+        {
+            if(forced_flags.contains(flag_id))
+                cout << "(+" <<  parser->useflag_name(flag_id) << ") ";
+            else if(masked_flags.contains(flag_id))
+                cout << "(-" <<  parser->useflag_name(flag_id) << ") ";
+            else cout << (flag_state ? "" : "-") << parser->useflag_name(flag_id) << " ";
+        }
+    cout << "\"" << endl;
+
+}
+
+Ebuild::FlagState Ebuild::get_flag_state(const size_t &flag_id)
+{
+    if(not parsed_deps)
+        parse_deps();
+
+    FlagState state = FlagState::UNKNOWN;
+
+    if(forced_flags.contains(flag_id))
+        state = FlagState::ON;
+    if(masked_flags.contains(flag_id))
+        state = FlagState::OFF;
+    if(state == FlagState::UNKNOWN)
+    {
+        const auto &flag_state_it = flag_states.find(flag_id);
+        if(flag_state_it != flag_states.end())
+            state = flag_state_it->second ? FlagState::ON : FlagState::OFF;
+    }
+
+    return state;
+}
+
 bool Ebuild::respects_usestates(const UseDependencies &use_dependencies)
 {
+    if(not parsed_deps)
+        parse_deps();
+
     if(not use_dependencies.is_valid)
         throw runtime_error("Testing against invalid use dependencies");
 
     for(const UseDependency &use_dep: use_dependencies.use_deps)
     {
         if(use_dep.type == UseDependency::Type::CONDITIONAL)
-            throw runtime_error("Testing against unprocessed use dependencies");
+            throw runtime_error("My programmer made a mistake: Testing against conditional use dependencies, only direct is allowed");
 
-        if(global_useflags.contains(use_dep.id))
+        const auto &flagstate = get_flag_state(use_dep.id);
+
+        if(flagstate == FlagState::UNKNOWN)
         {
-            if(use_dep.direct_dep.state != global_useflags[use_dep.id])
+            if(use_dep.direct_dep.has_default_if_unexisting and use_dep.direct_dep.state != use_dep.direct_dep.default_if_unexisting)
                 return false;
+            else throw runtime_error("In: " + parser->pkg_groupname(pkg_id) + "  id: " + to_string(id) + "\n" +
+                                     "      Asking for useflag: " + parser->useflag_name(use_dep.id) + " state but "
+                                     " it has not been set and doesn't a fallback default");
         }
-        else if(ebuild_useflags.contains(use_dep.id))
-        {
-            if(use_dep.direct_dep.state != global_useflags[use_dep.id])
-                return false;
-        }
-        else if(use_dep.direct_dep.has_default_if_unexisting)
-        {
-            if(use_dep.direct_dep.state != use_dep.direct_dep.default_if_unexisting)
-                return false;
-        }
-        else
-        {
-            cout << "Warning: asking for an unexisting useflag without a default" << endl;
+        else if((flagstate == FlagState::ON) != use_dep.direct_dep.state)
             return false;
-        }
     }
 
     return true;
@@ -374,8 +422,8 @@ bool Ebuild::respects_pkg_constraint(const PackageConstraint &pkg_constraint)
     if(not pkg_constraint.is_valid)
         throw runtime_error("Testing against invalid pkg_constraint");
 
-    return (not pkg_constraint.slot.slot_str.empty() and pkg_constraint.slot.slot_str == slot) and
-                  (not pkg_constraint.slot.subslot_str.empty() and pkg_constraint.slot.subslot_str == subslot) and
+    return (pkg_constraint.slot.slot_str.empty() or pkg_constraint.slot.slot_str == slot) and
+                  (pkg_constraint.slot.subslot_str.empty() or pkg_constraint.slot.subslot_str == subslot) and
                   eversion.respects_constraint(pkg_constraint.ver);
 }
 

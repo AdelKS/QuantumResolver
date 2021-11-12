@@ -22,21 +22,26 @@ size_t Parser::useflag_id(const string_view &flag_str, bool create_ids)
     // TODO: figure out how to use string_view for performance
     //       c.f. https://en.cppreference.com/w/cpp/container/unordered_map/find
 
-    size_t useflag_id = useflags->id_of(flag_str);
+    size_t useflag_id = useflags.lock()->id_of(flag_str);
     if(useflag_id == npos)
     {
         if(create_ids)
         {
-            useflag_id = useflags->emplace_back(string(flag_str), flag_str);
+            useflag_id = useflags.lock()->emplace_back(string(flag_str), flag_str);
         }
     }
 
     return useflag_id;
 }
 
-string Parser::pkg_groupname(size_t pkg_id)
+const string& Parser::pkg_groupname(size_t pkg_id)
 {
-    return (*pkgs)[pkg_id].get_pkg_groupname();
+    return (*pkgs.lock())[pkg_id].get_pkg_groupname();
+}
+
+const string& Parser::useflag_name(size_t useflag_id)
+{
+    return (*useflags.lock())[useflag_id];
 }
 
 UseflagStates Parser::parse_useflags(const std::deque<std::string> &useflag_lines, bool default_state, bool create_flag_ids)
@@ -152,7 +157,7 @@ UseflagStates Parser::parse_useflags(const string_view &useflags_str, bool defau
                 // We isolated a useflag between start_it and end_it
                 // TODO: string(string_view()) is counter-productive for performance
                 //       figure out how to do it with Hash::is_transparent and KeyEqual::is_transparent
-                //       c.f. https://en.cppreference.com/w/cpp/container/unordered_map/find                
+                //       c.f. https://en.cppreference.com/w/cpp/container/unordered_map/find
                 size_t flag = useflag_id(string_view(start_it, end_it), create_flag_ids);
                 if(flag == npos)
                     cout << "This useflag doesn't exist: " + string(string_view(start_it, end_it)) << endl;
@@ -177,10 +182,8 @@ pair<PackageConstraint, UseflagStates> Parser::parse_pkguse_line(string_view pkg
      * e.g. ">=app-misc/foo-1.2.3:0 +flag1 -flag2 flag3"
      * */
 
-    pair<PackageConstraint, UseflagStates> result;
-
-    auto &pkg_constraint = result.first;
-    auto &flag_states = result.second;
+    PackageConstraint pkg_constraint;
+    UseflagStates flag_states;
 
     pkg_constraint.is_valid = false;
 
@@ -188,7 +191,7 @@ pair<PackageConstraint, UseflagStates> Parser::parse_pkguse_line(string_view pkg
     skim_spaces_at_the_edges(pkguse_line);
 
     if(pkguse_line.empty() or pkguse_line.starts_with('#'))
-        return result;
+        return make_pair(pkg_constraint, flag_states);
 
     // find the first space that separates the package specification from the use flags
     // e.g.      >=app-misc/foo-1.2.3 +foo -bar
@@ -196,7 +199,7 @@ pair<PackageConstraint, UseflagStates> Parser::parse_pkguse_line(string_view pkg
 
     size_t first_space_char = pkguse_line.find(' ');
     if(first_space_char == string_view::npos)
-        return result;
+        return make_pair(pkg_constraint, flag_states);
 
     // create a view on the package constraint str ">=app-misc/foo-1.2.3" then parse it
     string_view pkg_constraint_str_view(pkguse_line);
@@ -205,15 +208,15 @@ pair<PackageConstraint, UseflagStates> Parser::parse_pkguse_line(string_view pkg
     //pkg constraints cannot contain useflag constraints
     pkg_constraint = parse_pkg_constraint(pkg_constraint_str_view);
 
-    if(not result.first.is_valid)
-        return result;
+    if(not pkg_constraint.is_valid)
+        return make_pair(pkg_constraint, flag_states);
 
     // create a view on the useflags "+foo -bar" and parse it
     string_view useflags_str_view(pkguse_line);
     useflags_str_view.remove_prefix(pkg_constraint_str_view.size());
-    flag_states = parse_useflags(useflags_str_view, true);
+    flag_states = parse_useflags(useflags_str_view, true, true);
 
-    return result;
+    return make_pair(pkg_constraint, flag_states);
 }
 
 PackageDependency Parser::parse_pkg_dependency(std::string_view pkg_dep_str)
@@ -362,7 +365,7 @@ PackageConstraint Parser::parse_pkg_constraint(std::string_view pkg_constraint_s
         pkg_group_name = str;
     }
 
-    pkg_constraint.pkg_id = pkgs->id_of(pkg_group_name);
+    pkg_constraint.pkg_id = pkgs.lock()->id_of(pkg_group_name);
     if(pkg_constraint.pkg_id == npos)
         pkg_constraint.is_valid = false;
 

@@ -19,29 +19,32 @@ struct Dependencies
     std::vector<std::pair<Toggle, Dependencies>> use_cond_deps;
 };
 
-typedef std::pair<size_t, size_t> EbuildId;
-
 class Package;
 
 class Ebuild
 {
-
 public:
+    enum struct VersionType {STABLE, TESTING, LIVE};
+    enum struct FlagState {ON, OFF, UNKNOWN};
+
     Ebuild(const std::string &ver,
-           std::deque<string> &&ebuild_lines,
-           std::shared_ptr<Parser> parser);
+           const std::filesystem::path &ebuild_path,
+           shared_ptr<Parser> &parser);
 
     bool operator <(const Ebuild &other);
     void parse_deps();
     void parse_metadata();
 
+    void print_flag_states(bool iuse_only = true);
+
+    FlagState get_flag_state(const size_t &flag_id);
     bool respects_pkg_dep(const PackageDependency &pkg_dep);
 
     bool respects_pkg_constraint(const PackageConstraint &pkg_constraint);
     bool respects_usestates(const UseDependencies &use_dependencies);
 
     void assign_useflag_state(size_t flag_id, bool state, const FlagAssignType &assign_type = FlagAssignType::DIRECT);
-    void assign_useflag_states(UseflagStates useflag_states, const FlagAssignType &assign_type = FlagAssignType::DIRECT);
+    void assign_useflag_states(const UseflagStates &useflag_states, const FlagAssignType &assign_type = FlagAssignType::DIRECT);
     void set_id(size_t id);
     size_t get_id();
 
@@ -53,22 +56,27 @@ public:
     static const size_t npos = -1;
 
 protected:
+
     Dependencies parse_dep_string(std::string_view dep_string);
     void add_deps(const Dependencies &deps, Dependencies::Type dep_type);
 
-    void add_useflag(size_t flag_id, bool default_state);
-    void add_useflags(std::unordered_map<std::size_t, bool> useflags_and_default_states);
+    void add_iuse_flag(size_t flag_id, bool default_state);
+    void add_iuse_flags(std::unordered_map<std::size_t, bool> useflags_and_default_states);
 
     EbuildVersion eversion;
     std::shared_ptr<Parser> parser;
-    bool masked, testing;
+
+    bool masked, parsed_metadata, parsed_deps;
+    std::filesystem::path ebuild_path;
+    VersionType version_type;
 
     Dependencies bdeps, rdeps;
     std::deque<std::string> ebuild_lines;
 
+    std::unordered_set<size_t> iuse_flags;
     std::unordered_set<size_t> masked_flags, forced_flags;
-    UseflagStates ebuild_useflags;
-    UseflagStates global_useflags;
+    UseflagStates flag_states;
+
     size_t id, pkg_id;
     std::string slot, subslot;
 };

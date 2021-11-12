@@ -13,7 +13,10 @@ using namespace std::chrono;
 using namespace std;
 namespace fs = filesystem;
 
-Database::Database(): pkgs(make_shared<NamedVector<Package>>()), useflags(make_shared<NamedVector<string>>()), parser(make_shared<Parser>(pkgs, useflags))
+Database::Database():
+    pkgs(make_shared<NamedVector<Package>>()),
+    useflags(make_shared<NamedVector<string>>()),
+    parser(make_shared<Parser>(pkgs, useflags))
 {
 }
 
@@ -22,6 +25,9 @@ void Database::load_ebuilds(const std::string &path)
     fs::path cache_path(path);
     if(not fs::is_directory(cache_path))
         throw runtime_error("Path is not a directory");
+
+    cout << "Reading cached ebuilds from " + path << endl;
+    auto start = high_resolution_clock::now();
 
     for(fs::directory_entry const& entry: fs::recursive_directory_iterator(cache_path))
     {
@@ -45,8 +51,11 @@ void Database::load_ebuilds(const std::string &path)
         }
 
         Package &pkg = (*pkgs)[pkg_id];
-        pkg.add_version(pkg_ver, read_file_lines(entry.path()));
+        pkg.add_version(pkg_ver, entry.path());
     }
+
+    auto end = high_resolution_clock::now();
+    cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
 }
 
 template <class Map>
@@ -67,7 +76,10 @@ void Database::load_profile_settings()
     fs::path profile = fs::canonical(profile_symlink);
     cout << "Absolute path of the profile " << profile.string() << endl;
 
-    vector<fs::path> profile_tree = {profile};
+    cout << "Populating profile tree" << endl;
+    auto start = high_resolution_clock::now();
+
+    vector<fs::path> profile_tree = {"/etc/portage", profile};
     deque<fs::path> explore_queue = {profile};
 
     while(not explore_queue.empty())
@@ -93,17 +105,37 @@ void Database::load_profile_settings()
         }
     }
 
+    auto end = high_resolution_clock::now();
+    cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
+
+
+    cout << "Getting global use flags" << endl;
+    start = high_resolution_clock::now();
+
     // we cheat here and read portageeq to get the final form of USE
     //  TODO: handle this ourselves...
     string global_useflags_str = exec("portageq envvar USE");
     if(global_useflags_str.ends_with('\n'))
         global_useflags_str.pop_back();
 
+    end = high_resolution_clock::now();
+    cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
+
+    cout << "Forwarding them to each ebuild" << endl;
+    start = high_resolution_clock::now();
+
     // Parse that and forward it to the ebuilds
     global_useflags = parser->parse_useflags(global_useflags_str, true, true);
     for(Package &pkg: *pkgs)
         for(Ebuild &ebuild: pkg.get_ebuilds())
             ebuild.assign_useflag_states(global_useflags);
+
+    end = high_resolution_clock::now();
+    cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
+
+
+    cout << "Reading global forced and masked flags from profile tree" << endl;
+    start = high_resolution_clock::now();
 
     vector<tuple<string, FlagAssignType, UseflagStates&>> profile_use_files_and_type =
     {
@@ -116,19 +148,34 @@ void Database::load_profile_settings()
     // Do global useflag overrides first
     for(auto it = profile_tree.rbegin() ; it != profile_tree.rend() ; it++)
     {
-        cout << "##################################################" << endl;
-        cout << "Profile directory: " << it->string() << endl;
-
+        fs::path make_defaults_path(it->string() + "/make.defaults");
+        if(fs::is_regular_file(make_defaults_path))
+        {
+            cout<< "#############################" << endl;
+            cout << make_defaults_path.string() << endl;
+            for(auto &line: read_file_lines(make_defaults_path))
+                cout << line << endl;
+        }
         for(auto &[profile_use_file, use_type, container]: profile_use_files_and_type)
             for(const auto &path: get_regular_files(it->string() + "/" + profile_use_file))
                 update_map(container, parser->parse_useflags(read_file_lines(path), true, true));
     }
+
+    end = high_resolution_clock::now();
+    cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
+
+
+    cout << "Forwarding them to ebuilds" << endl;
+    start = high_resolution_clock::now();
 
     // Forward these global flags to the ebuilds
     for(Package &pkg: *pkgs)
         for(Ebuild &ebuild: pkg.get_ebuilds())
             for(auto &[profile_use_file, use_type, container]: profile_use_files_and_type)
                 ebuild.assign_useflag_states(container, use_type);
+
+    end = high_resolution_clock::now();
+    cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
 
     vector<pair<string, FlagAssignType>> pkguse_profile_files =
     {
@@ -138,11 +185,11 @@ void Database::load_profile_settings()
         {"package.stable.use.mask", FlagAssignType::STABLE_MASK},
     };
 
+    cout << "Reading profile tree and forwarding per package use, force and mask flags to ebuilds" << endl;
+    start = high_resolution_clock::now();
+
     for(auto it = profile_tree.rbegin() ; it != profile_tree.rend() ; it++)
     {
-        cout << "##################################################" << endl;
-        cout << "Profile directory: " << it->string() << endl;
-
         for(auto &[profile_use_file, use_type]: pkguse_profile_files)
             for(const auto &path: get_regular_files(it->string() + "/" + profile_use_file))
                 for(string_view line: read_file_lines(path))
@@ -154,39 +201,23 @@ void Database::load_profile_settings()
                     }
                 }
     }
+    end = high_resolution_clock::now();
+    cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
 }
 
-void Database::account_for_user_useflags()
+void Database::print_flag_states(const string &package_constraint_str)
 {
-    vector<fs::path> userflag_file_paths;
-
-    fs::path user_useflags_path("/etc/portage/package.use");
-    if(fs::is_directory(user_useflags_path))
+    cout << "We got here!" << endl;
+    PackageConstraint pkg_constraint = parser->parse_pkg_constraint(package_constraint_str);
+    if(not pkg_constraint.is_valid)
     {
-        for(fs::directory_entry const& entry: fs::recursive_directory_iterator(user_useflags_path))
-        {
-            if(entry.is_regular_file())
-                userflag_file_paths.emplace_back(entry.path());
-        }
+        cout << "Invalid atom: " << package_constraint_str << endl;
+        return;
     }
-    else if(fs::is_regular_file(user_useflags_path))
+
+    for(auto &ebuild_id: (*pkgs)[pkg_constraint.pkg_id].get_matching_ebuilds(pkg_constraint))
     {
-        userflag_file_paths.emplace_back(user_useflags_path);
-    }
-    else throw runtime_error("/etc/portage/package.use is weird");
-
-    for(const auto &path: userflag_file_paths)
-    {
-        for(string_view line_str_view: read_file_lines(path))
-        {
-            const auto &[pkg_constraint, useflag_toggles] = parser->parse_pkguse_line(line_str_view);
-
-            if(not pkg_constraint.is_valid)
-                continue;
-
-            // give that to the relevant package so it updates its ebuilds
-            (*pkgs)[pkg_constraint.pkg_id].assign_useflag_states(pkg_constraint, useflag_toggles);
-        }
+        (*pkgs)[pkg_constraint.pkg_id][ebuild_id].print_flag_states();
     }
 }
 
@@ -204,13 +235,6 @@ void Database::parse_deps()
 
 void Database::populate(const std::string &overlay_cache_path)
 {
-    auto start = high_resolution_clock::now();
-
-    load_ebuilds(overlay_cache_path);    
+    load_ebuilds(overlay_cache_path);
     load_profile_settings();
-    parse_ebuild_metadata();
-//    parse_deps();
-
-    auto duration = duration_cast<milliseconds>(high_resolution_clock::now() - start);
-    cout << "It took " << duration.count() << "ms to read ::gentoo cache" << endl;
 }

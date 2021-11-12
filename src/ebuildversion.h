@@ -25,7 +25,10 @@ public:
 
     bool respects_constraint(const VersionConstraint &constraint);
 
+    const std::string &get_version();
+
 protected:
+    std::string version;
     std::vector<std::pair<size_t, long>> version_parsing; // see operator <
 
     const static std::vector<std::string> ordered_separators;

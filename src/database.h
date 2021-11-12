@@ -15,15 +15,12 @@ public:
 
     void populate(const std::string &overlay_cache_path);
 
-    static const size_t npos = -1;
+    void print_flag_states(const string &package);
 
 protected:
     void load_ebuilds(const std::string &path);
     void parse_ebuild_metadata();
     void parse_deps();
-
-    void account_for_global_useflags();
-    void account_for_user_useflags();
 
     void load_profile_settings();
 

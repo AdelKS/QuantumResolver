@@ -11,8 +11,9 @@ int main(int argc, char *argv[])
     Database database;
     try
     {
+        cout << argc << endl;
         database.populate("/var/db/repos/gentoo/metadata/md5-cache");
-        cout << "Done populating!" << endl;
+        database.print_flag_states("www-client/firefox");
     }
     catch(runtime_error &err)
     {

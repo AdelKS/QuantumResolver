@@ -5,11 +5,24 @@
 using namespace std;
 namespace fs = filesystem;
 
-Package::Package(std::string pkg_group_name,
-                 std::shared_ptr<Parser> parser):
+Package::Package(const std::string &pkg_group_name,
+                 const std::shared_ptr<Parser> &parser):
     pkg_groupname(pkg_group_name), parser(parser)
 {
 
+}
+
+const vector<size_t> Package::get_matching_ebuilds(const PackageConstraint &constraint)
+{
+    vector<size_t> matching_ebuilds;
+
+    for(Ebuild &ebuild: ebuilds)
+    {
+        if(ebuild.respects_pkg_constraint(constraint))
+            matching_ebuilds.push_back(ebuild.get_id());
+    }
+
+    return matching_ebuilds;
 }
 
 const string &Package::get_pkg_groupname()
@@ -29,7 +42,7 @@ size_t Package::get_id()
 
 void Package::parse_metadata()
 {
-    for(auto &ebuild: ebuilds)    
+    for(auto &ebuild: ebuilds)
         ebuild.parse_metadata();
 }
 
@@ -58,9 +71,9 @@ Ebuild &Package::operator[](const size_t &id)
 }
 
 
-Ebuild& Package::add_version(const string &version, deque<string> &&ebuild_lines)
+Ebuild& Package::add_version(const string &version, const fs::path &ebuild_path)
 {
-    size_t index = ebuilds.emplace_back(Ebuild(version, move(ebuild_lines), parser), version);
+    size_t index = ebuilds.push_back(Ebuild(version, ebuild_path, parser), version);
     ebuilds.back().set_id(index);
     ebuilds.back().set_pkg_id(pkg_id);
 

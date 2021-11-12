@@ -70,10 +70,16 @@ bool EbuildVersion::respects_constraint(const VersionConstraint &constraint)
     throw runtime_error("Version constraint check failed.");
 }
 
+const std::string &EbuildVersion::get_version()
+{
+    return version;
+}
+
 void EbuildVersion::set_version(std::string ver)
 {
     if(ver.empty())
     {
+        version.clear();
         version_parsing.clear();
         return;
     }
@@ -81,7 +87,7 @@ void EbuildVersion::set_version(std::string ver)
     if(not regex_match(ver, ver_regexp))
         throw runtime_error("Version string of invalid format : " + ver);
 
-
+    version = ver;
     vector<pair<size_t, string>> split = split_string(ver, ordered_separators, dot_index);
 
     long letter_number = 0, number = 0;

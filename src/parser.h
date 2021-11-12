@@ -79,10 +79,11 @@ class Parser
 {
 public:
     Parser(std::shared_ptr<NamedVector<Package>> pkgs,
-           std::shared_ptr<NamedVector<std::string>> useflags);    
+           std::shared_ptr<NamedVector<std::string>> useflags);
 
     size_t useflag_id(const string_view &flag_str, bool create_ids);
-    string pkg_groupname(size_t pkg_id);
+    const string& pkg_groupname(size_t pkg_id);
+    const string& useflag_name(size_t useflag_id);
 
     UseflagStates parse_useflags(const std::deque<std::string> &useflag_lines, bool default_state, bool create_flag_ids = false);
     UseflagStates parse_useflags(const std::string_view &useflags_str, bool default_state, bool create_ids = false);
@@ -96,8 +97,8 @@ public:
     static const size_t npos = -1;
 
 protected:
-    std::shared_ptr<NamedVector<Package>> pkgs;
-    std::shared_ptr<NamedVector<std::string>> useflags;
+    std::weak_ptr<NamedVector<Package>> pkgs;
+    std::weak_ptr<NamedVector<std::string>> useflags;
 
 };
 

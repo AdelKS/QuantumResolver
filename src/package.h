@@ -3,6 +3,7 @@
 
 #include <string>
 #include <filesystem>
+#include <deque>
 
 #include "ebuild.h"
 #include "namedvector.h"
@@ -11,10 +12,10 @@
 class Package
 {
 public:
-    Package(std::string pkg_group_name,
-            std::shared_ptr<Parser> parser);
+    Package(const std::string &pkg_group_name,
+            const std::shared_ptr<Parser> &parser);
 
-    Ebuild &add_version(const std::string &version, deque<string> &&ebuild_lines);
+    Ebuild &add_version(const std::string &version, const std::filesystem::path &ebuild_path);
 
     void parse_metadata();
     void parse_deps();
@@ -29,6 +30,8 @@ public:
     void assign_useflag_states(const PackageConstraint &constraint,
                                const UseflagStates &useflag_states,
                                const FlagAssignType &assign_type = FlagAssignType::DIRECT);
+
+    const std::vector<std::size_t> get_matching_ebuilds(const PackageConstraint &constraint);
 
     void set_id(size_t pkg_id);
     size_t get_id();
