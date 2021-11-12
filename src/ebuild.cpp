@@ -38,7 +38,7 @@ void Ebuild::parse_deps()
     }
 }
 
-void Ebuild::parse_iuse()
+void Ebuild::parse_metadata()
 {
     for(string_view ebuild_line_view: ebuild_lines)
     {
@@ -49,6 +49,34 @@ void Ebuild::parse_iuse()
             auto flag_states = parser->parse_useflags(ebuild_line_view, false, true);
             add_useflags(flag_states);
             break;
+        }
+        else if(ebuild_line_view.starts_with("SLOT"))
+        {
+            ebuild_line_view.remove_prefix(5);
+            size_t subslot_sep_index = ebuild_line_view.find_first_of("/");
+            if(subslot_sep_index == string_view::npos)
+            {
+                slot = ebuild_line_view;
+                subslot = ebuild_line_view;
+            }
+            else
+            {
+                slot = ebuild_line_view.substr(0, subslot_sep_index);
+                subslot = ebuild_line_view.substr(subslot_sep_index+1);
+            }
+        }
+        else if(ebuild_line_view.starts_with("KEYWORDS"))
+        {
+            ebuild_line_view.remove_prefix(9);
+            const auto &keywords = parser->parse_keywords(ebuild_line_view);
+            for(const auto &[keyword_id, is_testing]: keywords)
+            {
+                if(global_useflags.contains(keyword_id))
+                {
+                    testing = is_testing;
+                    break;
+                }
+            }
         }
     }
 }
@@ -66,19 +94,41 @@ void Ebuild::add_useflags(std::unordered_map<std::size_t, bool> useflags_and_def
     }
 }
 
-void Ebuild::assign_useflag_state(size_t flag_id, bool state)
+void Ebuild::assign_useflag_state(size_t flag_id, bool state, const FlagAssignType &assign_type)
 {
-    auto flag_iter = ebuild_useflags.find(flag_id);
-    if(flag_iter != ebuild_useflags.end())
-        flag_iter->second = state;
-
+    if(assign_type == FlagAssignType::DIRECT)
+    {
+        auto flag_iter = ebuild_useflags.find(flag_id);
+        if(flag_iter != ebuild_useflags.end())
+            flag_iter->second = state;
+        else
+        {
+            flag_iter = global_useflags.find(flag_id);
+            if(flag_iter != global_useflags.end())
+                flag_iter->second = state;
+        }
+    }
+    else if(assign_type == FlagAssignType::FORCE or
+            (assign_type == FlagAssignType::STABLE_FORCE and testing == false) )
+    {
+        if(state)
+            forced_flags.insert(flag_id);
+        else forced_flags.erase(flag_id);
+    }
+    else if(assign_type == FlagAssignType::MASK or
+            (assign_type == FlagAssignType::STABLE_MASK and testing == false) )
+    {
+        if(state)
+            masked_flags.insert(flag_id);
+        else masked_flags.erase(flag_id);
+    }
 }
 
-void Ebuild::assign_useflag_states(std::unordered_map<std::size_t, bool> useflag_states)
+void Ebuild::assign_useflag_states(UseflagStates useflag_states, const FlagAssignType &assign_type)
 {
-    for(const auto &flag_state_iter: useflag_states)
+    for(const auto &[flag_id, flag_state]: useflag_states)
     {
-        assign_useflag_state(flag_state_iter.first, flag_state_iter.second);
+        assign_useflag_state(flag_id, flag_state, assign_type);
     }
 }
 
@@ -266,10 +316,10 @@ Dependencies Ebuild::parse_dep_string(string_view dep_string)
             else
             {
                 // it is a "plain" (this may be a nested call) pkg constraint
-                const PackageConstraint& pkg_constraint = parser->parse_pkg_constraint(constraint);
-                if(pkg_constraint.is_valid)
-                    deps.plain_deps.emplace_back(pkg_constraint);
-                else if(pkg_constraint.blocker_type == PackageConstraint::BlockerType::NONE)
+                const PackageDependency& pkg_dep = parser->parse_pkg_dependency(constraint);
+                if(pkg_dep.is_valid)
+                    deps.plain_deps.emplace_back(pkg_dep);
+                else if(pkg_dep.blocker_type == PackageDependency::BlockerType::NONE)
                 {
                     cout << "Could not find package: " << string(constraint) << endl;
                     deps.valid = false;
@@ -282,6 +332,64 @@ Dependencies Ebuild::parse_dep_string(string_view dep_string)
     }
 
     return deps;
+}
+
+bool Ebuild::respects_usestates(const UseDependencies &use_dependencies)
+{
+    if(not use_dependencies.is_valid)
+        throw runtime_error("Testing against invalid use dependencies");
+
+    for(const UseDependency &use_dep: use_dependencies.use_deps)
+    {
+        if(use_dep.type == UseDependency::Type::CONDITIONAL)
+            throw runtime_error("Testing against unprocessed use dependencies");
+
+        if(global_useflags.contains(use_dep.id))
+        {
+            if(use_dep.direct_dep.state != global_useflags[use_dep.id])
+                return false;
+        }
+        else if(ebuild_useflags.contains(use_dep.id))
+        {
+            if(use_dep.direct_dep.state != global_useflags[use_dep.id])
+                return false;
+        }
+        else if(use_dep.direct_dep.has_default_if_unexisting)
+        {
+            if(use_dep.direct_dep.state != use_dep.direct_dep.default_if_unexisting)
+                return false;
+        }
+        else
+        {
+            cout << "Warning: asking for an unexisting useflag without a default" << endl;
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool Ebuild::respects_pkg_constraint(const PackageConstraint &pkg_constraint)
+{
+    if(not pkg_constraint.is_valid)
+        throw runtime_error("Testing against invalid pkg_constraint");
+
+    return (not pkg_constraint.slot.slot_str.empty() and pkg_constraint.slot.slot_str == slot) and
+                  (not pkg_constraint.slot.subslot_str.empty() and pkg_constraint.slot.subslot_str == subslot) and
+                  eversion.respects_constraint(pkg_constraint.ver);
+}
+
+bool Ebuild::respects_pkg_dep(const PackageDependency &pkg_dep)
+{
+    if(masked)
+        return false;
+
+    bool result = respects_pkg_constraint(pkg_dep.pkg_constraint) and respects_usestates(pkg_dep.use_dependencies);
+
+    if(not (pkg_dep.blocker_type == PackageDependency::BlockerType::NONE))
+        result = not result;
+
+    return result;
 }
 
 

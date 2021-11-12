@@ -49,6 +49,15 @@ void Database::load_ebuilds(const std::string &path)
     }
 }
 
+template <class Map>
+void update_map(Map &original, const Map &update)
+{
+    for(const auto &[key, val]: update)
+    {
+        original[key] = val;
+    }
+}
+
 void Database::load_profile_settings()
 {
     fs::path profile_symlink("/etc/portage/make.profile");
@@ -84,69 +93,67 @@ void Database::load_profile_settings()
         }
     }
 
-    cout << "package masks:" << endl;
-//    vector<fs::path>              use_force,     use_mask,     use_stable_force,     use_stable_mask;
-//    vector<fs::path> pkg_use, pkg_use_force, pkg_use_mask, pkg_use_stable_force, pkg_use_stable_mask;
-//    vector<fs::path> pkg_mask;
+    // we cheat here and read portageeq to get the final form of USE
+    //  TODO: handle this ourselves...
+    string global_useflags_str = exec("portageq envvar USE");
+    if(global_useflags_str.ends_with('\n'))
+        global_useflags_str.pop_back();
 
-//    unordered_map<string, UseflagStates> global_use_toggles =
-//    { {"use.force", UseflagStates()}, {"use.mask", UseflagStates()}, {"use.stable.force", UseflagStates()}, {"use.stable.mask", UseflagStates()} };
+    // Parse that and forward it to the ebuilds
+    global_useflags = parser->parse_useflags(global_useflags_str, true, true);
+    for(Package &pkg: *pkgs)
+        for(Ebuild &ebuild: pkg.get_ebuilds())
+            ebuild.assign_useflag_states(global_useflags);
 
-//    unordered_map<string, vector<PkgUseToggles>> pkg_use_toggles =
-//     { {"package.use.force", vector<PkgUseToggles>()},        {"package.use.mask", vector<PkgUseToggles>()},
-//       {"package.use.stable.force", vector<PkgUseToggles>()}, {"package.use.stable.mask", vector<PkgUseToggles>()} };
+    vector<tuple<string, FlagAssignType, UseflagStates&>> profile_use_files_and_type =
+    {
+        {"use.force", FlagAssignType::FORCE, use_force},
+        {"use.stable.force", FlagAssignType::STABLE_FORCE, use_stable_force},
+        {"use.mask", FlagAssignType::MASK, use_mask},
+        {"use.stable.mask", FlagAssignType::STABLE_MASK, use_stable_mask},
+    };
 
-    vector<PackageConstraint> pkg_masks;
+    // Do global useflag overrides first
+    for(auto it = profile_tree.rbegin() ; it != profile_tree.rend() ; it++)
+    {
+        cout << "##################################################" << endl;
+        cout << "Profile directory: " << it->string() << endl;
 
-    // TODO : continue here
+        for(auto &[profile_use_file, use_type, container]: profile_use_files_and_type)
+            for(const auto &path: get_regular_files(it->string() + "/" + profile_use_file))
+                update_map(container, parser->parse_useflags(read_file_lines(path), true, true));
+    }
+
+    // Forward these global flags to the ebuilds
+    for(Package &pkg: *pkgs)
+        for(Ebuild &ebuild: pkg.get_ebuilds())
+            for(auto &[profile_use_file, use_type, container]: profile_use_files_and_type)
+                ebuild.assign_useflag_states(container, use_type);
+
+    vector<pair<string, FlagAssignType>> pkguse_profile_files =
+    {
+        {"package.use", FlagAssignType::DIRECT},
+        {"package.stable.use", FlagAssignType::STABLE_FORCE},
+        {"package.use.mask", FlagAssignType::MASK},
+        {"package.stable.use.mask", FlagAssignType::STABLE_MASK},
+    };
 
     for(auto it = profile_tree.rbegin() ; it != profile_tree.rend() ; it++)
     {
         cout << "##################################################" << endl;
         cout << "Profile directory: " << it->string() << endl;
 
-        for(const auto &path: get_regular_files(it->string() + "/use.force"))
-        {
-            for(string_view line: read_file_lines(path))
-            {
-                cout << "use.force line: " << string(line) << endl;
-                bool unforce = false;
-                if(line.starts_with('-'))
+        for(auto &[profile_use_file, use_type]: pkguse_profile_files)
+            for(const auto &path: get_regular_files(it->string() + "/" + profile_use_file))
+                for(string_view line: read_file_lines(path))
                 {
-                    cout << "                 Unforced" << endl;
-                    line.remove_prefix(1);
-                    unforce = true;
+                    const auto &[pkg_constraint, use_toggles] = parser->parse_pkguse_line(line);
+                    if(pkg_constraint.is_valid)
+                    {
+                        (*pkgs)[pkg_constraint.pkg_id].assign_useflag_states(pkg_constraint, use_toggles, use_type);
+                    }
                 }
-                size_t flag_id = useflags->id_of(line);
-                if(flag_id != npos)
-                {
-                    cout << "                 Flag id: " << flag_id << endl;
-                    if(unforce)
-                        forced_flags.erase(flag_id);
-                    else forced_flags.insert(flag_id);
-                }
-            }
-        }
     }
-}
-
-void Database::account_for_global_useflags()
-{
-    string global_useflags_str = exec("portageq envvar USE");
-    if(global_useflags_str.ends_with('\n'))
-        global_useflags_str.pop_back();
-
-    global_useflags_str += " " + exec("portageq envvar IUSE_IMPLICIT");
-    if(global_useflags_str.ends_with('\n'))
-        global_useflags_str.pop_back();
-
-    // All use flags are contained in ebuilds in md5-cache, do not create new ones from profile
-    auto global_useflags = parser->parse_useflags(global_useflags_str, true, false);
-    VersionConstraint constraint;
-    constraint.type = VersionConstraint::Type::NONE;
-
-    for(size_t i = 0 ; i < pkgs->size(); i++)
-        (*pkgs)[i].update_useflags_with_constraints(constraint, global_useflags);
 }
 
 void Database::account_for_user_useflags()
@@ -172,21 +179,21 @@ void Database::account_for_user_useflags()
     {
         for(string_view line_str_view: read_file_lines(path))
         {
-            const auto &pkg_useflag_toggles = parser->parse_pkguse_line(line_str_view);
+            const auto &[pkg_constraint, useflag_toggles] = parser->parse_pkguse_line(line_str_view);
 
-            if(not pkg_useflag_toggles.first.is_valid)
+            if(not pkg_constraint.is_valid)
                 continue;
 
             // give that to the relevant package so it updates its ebuilds
-            (*pkgs)[pkg_useflag_toggles.first.pkg_id].update_useflags_with_constraints(pkg_useflag_toggles.first.ver, pkg_useflag_toggles.second);
+            (*pkgs)[pkg_constraint.pkg_id].assign_useflag_states(pkg_constraint, useflag_toggles);
         }
     }
 }
 
-void Database::parse_iuse()
+void Database::parse_ebuild_metadata()
 {
     for(auto &pkg: *pkgs)
-        pkg.parse_iuse();
+        pkg.parse_metadata();
 }
 
 void Database::parse_deps()
@@ -199,12 +206,11 @@ void Database::populate(const std::string &overlay_cache_path)
 {
     auto start = high_resolution_clock::now();
 
-    load_ebuilds(overlay_cache_path);
-    parse_iuse();
-    parse_deps();
+    load_ebuilds(overlay_cache_path);    
+    load_profile_settings();
+    parse_ebuild_metadata();
+//    parse_deps();
 
     auto duration = duration_cast<milliseconds>(high_resolution_clock::now() - start);
     cout << "It took " << duration.count() << "ms to read ::gentoo cache" << endl;
-
-    load_profile_settings();
 }

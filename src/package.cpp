@@ -7,14 +7,14 @@ namespace fs = filesystem;
 
 Package::Package(std::string pkg_group_name,
                  std::shared_ptr<Parser> parser):
-    pkg_group_name(pkg_group_name), parser(parser)
+    pkg_groupname(pkg_group_name), parser(parser)
 {
 
 }
 
-const string &Package::get_pkg_name()
+const string &Package::get_pkg_groupname()
 {
-    return pkg_group_name;
+    return pkg_groupname;
 }
 
 void Package::set_id(size_t pkg_id)
@@ -27,10 +27,10 @@ size_t Package::get_id()
     return pkg_id;
 }
 
-void Package::parse_iuse()
+void Package::parse_metadata()
 {
     for(auto &ebuild: ebuilds)    
-        ebuild.parse_iuse();    
+        ebuild.parse_metadata();
 }
 
 void Package::parse_deps()
@@ -39,11 +39,16 @@ void Package::parse_deps()
         ebuild.parse_deps();
 }
 
+NamedVector<Ebuild>& Package::get_ebuilds()
+{
+    return ebuilds;
+}
+
 Ebuild &Package::operator[](const string &ver)
 {
     size_t index = ebuilds.id_of(ver);
     if(index == ebuilds.npos)
-        throw runtime_error("version " + ver + "is not available in " + pkg_group_name);
+        throw runtime_error("version " + ver + "is not available in " + pkg_groupname);
     else return ebuilds[index];
 }
 
@@ -62,10 +67,14 @@ Ebuild& Package::add_version(const string &version, deque<string> &&ebuild_lines
     return ebuilds[index];
 }
 
-void Package::update_useflags_with_constraints(const VersionConstraint &constraint,
-                                               std::unordered_map<size_t, bool> useflag_states)
+void Package::assign_useflag_states(const PackageConstraint &constraint,
+                                    const UseflagStates &useflag_states,
+                                    const FlagAssignType &assign_type)
 {
+    if(constraint.pkg_id != pkg_id)
+        throw runtime_error("Applying constraint to the wrong package");
+
     for(auto &ebuild: ebuilds)
-        if(respects_constraint(ebuild.get_version(), constraint))
-            ebuild.assign_useflag_states(useflag_states);
+        if(ebuild.respects_pkg_constraint(constraint))
+            ebuild.assign_useflag_states(useflag_states, assign_type);
 }

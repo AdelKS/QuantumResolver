@@ -59,7 +59,7 @@ size_t NamedVector<Object>::emplace_back(const Object&& object, const string_vie
     size_t index = objects.size();
     objects.emplace_back(object);
 
-    name_to_index[name.data()] = index;
+    name_to_index.emplace(name, index);
     return index;
 }
 

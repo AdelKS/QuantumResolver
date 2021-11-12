@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <deque>
 #include <string_view>
+#include <unordered_map>
 
 #define LINE_MAX_SIZE 10000
 

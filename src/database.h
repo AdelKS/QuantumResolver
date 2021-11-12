@@ -19,7 +19,7 @@ public:
 
 protected:
     void load_ebuilds(const std::string &path);
-    void parse_iuse();
+    void parse_ebuild_metadata();
     void parse_deps();
 
     void account_for_global_useflags();
@@ -27,7 +27,8 @@ protected:
 
     void load_profile_settings();
 
-    std::unordered_set<size_t> masked_flags, forced_flags;
+    UseflagStates use_mask, use_force, use_stable_force, use_stable_mask;
+    UseflagStates global_useflags;
     std::shared_ptr<NamedVector<Package>> pkgs;
     std::shared_ptr<NamedVector<std::string>> useflags;
     std::shared_ptr<Parser> parser;

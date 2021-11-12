@@ -16,21 +16,25 @@ public:
 
     Ebuild &add_version(const std::string &version, deque<string> &&ebuild_lines);
 
-    void parse_iuse();
+    void parse_metadata();
     void parse_deps();
 
-    const string &get_pkg_name();
+    NamedVector<Ebuild>& get_ebuilds();
+
+    const string &get_pkg_groupname();
 
     Ebuild& operator [](const size_t &id);
     Ebuild& operator [](const string &ver);
 
-    void update_useflags_with_constraints(const VersionConstraint &constraint, std::unordered_map<size_t, bool> useflag_states);
+    void assign_useflag_states(const PackageConstraint &constraint,
+                               const UseflagStates &useflag_states,
+                               const FlagAssignType &assign_type = FlagAssignType::DIRECT);
 
     void set_id(size_t pkg_id);
     size_t get_id();
 
 protected:
-    std::string pkg_group_name; // e.g. sys-devel/gcc
+    std::string pkg_groupname; // e.g. sys-devel/gcc
     std::size_t pkg_id;
 
     std::shared_ptr<Parser> parser;

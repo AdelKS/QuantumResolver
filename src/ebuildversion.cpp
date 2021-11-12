@@ -38,6 +38,38 @@ EbuildVersion::EbuildVersion(string ver)
     set_version(ver);
 }
 
+bool EbuildVersion::respects_constraint(const VersionConstraint &constraint)
+{
+    switch (constraint.type) {
+    case VersionConstraint::Type::NONE:
+        return true;
+        break;
+    case VersionConstraint::Type::SLESS:
+        return *this < constraint.version;
+        break;
+    case VersionConstraint::Type::LESS:
+        return *this <= constraint.version;
+        break;
+    case VersionConstraint::Type::EQ_REV:
+        return *this ^= constraint.version;
+        break;
+    case VersionConstraint::Type::EQ_STAR:
+        return *this *= constraint.version;
+        break;
+    case VersionConstraint::Type::EQ:
+        return *this == constraint.version;
+        break;
+    case VersionConstraint::Type::GREATER:
+        return *this >= constraint.version;
+        break;
+    case VersionConstraint::Type::SGREATER:
+        return *this > constraint.version;
+        break;
+    }
+
+    throw runtime_error("Version constraint check failed.");
+}
+
 void EbuildVersion::set_version(std::string ver)
 {
     if(ver.empty())
@@ -194,36 +226,4 @@ bool operator ^= (const EbuildVersion &a, const EbuildVersion &b)
 
     return res == 0;
 
-}
-
-bool respects_constraint(const EbuildVersion &ver, const VersionConstraint &constraint)
-{
-    switch (constraint.type) {
-    case VersionConstraint::Type::NONE:
-        return true;
-        break;
-    case VersionConstraint::Type::SLESS:
-        return ver < constraint.version;
-        break;
-    case VersionConstraint::Type::LESS:
-        return ver <= constraint.version;
-        break;
-    case VersionConstraint::Type::EQ_REV:
-        return ver ^= constraint.version;
-        break;
-    case VersionConstraint::Type::EQ_STAR:
-        return ver *= constraint.version;
-        break;
-    case VersionConstraint::Type::EQ:
-        return ver == constraint.version;
-        break;
-    case VersionConstraint::Type::GREATER:
-        return ver >= constraint.version;
-        break;
-    case VersionConstraint::Type::SGREATER:
-        return ver > constraint.version;
-        break;
-    }
-
-    throw runtime_error("Version constraint check failed.");
 }

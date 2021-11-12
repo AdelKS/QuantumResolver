@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+struct VersionConstraint;
+
 class EbuildVersion
 {
 public:
@@ -20,6 +22,8 @@ public:
     friend bool operator == (const EbuildVersion &a, const EbuildVersion &b); // returns true if this = 1.23
     friend bool operator *= (const EbuildVersion &a, const EbuildVersion &b); // returns true if this matches with =1.23*
     friend bool operator ^= (const EbuildVersion &a, const EbuildVersion &b); // returns true if this ~ 1.23
+
+    bool respects_constraint(const VersionConstraint &constraint);
 
 protected:
     std::vector<std::pair<size_t, long>> version_parsing; // see operator <
@@ -39,8 +43,6 @@ struct VersionConstraint
     Type type;
     EbuildVersion version;
 };
-
-bool respects_constraint(const EbuildVersion &ver, const VersionConstraint &constraint);
 
 
 
