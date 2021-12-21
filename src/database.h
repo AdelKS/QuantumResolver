@@ -18,6 +18,7 @@ public:
     void print_flag_states(const string &package);
 
 protected:
+    void load_installed_pkgs();
     void load_ebuilds(const std::string &path);
     void parse_ebuild_metadata();
     void parse_deps();

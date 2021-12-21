@@ -23,7 +23,7 @@ size_t Parser::useflag_id(const string_view &flag_str, bool create_ids)
     //       c.f. https://en.cppreference.com/w/cpp/container/unordered_map/find
 
     size_t useflag_id = useflags.lock()->id_of(flag_str);
-    if(useflag_id == npos)
+    if(useflag_id == useflags.lock()->npos)
     {
         if(create_ids)
         {
@@ -159,7 +159,7 @@ UseflagStates Parser::parse_useflags(const string_view &useflags_str, bool defau
                 //       figure out how to do it with Hash::is_transparent and KeyEqual::is_transparent
                 //       c.f. https://en.cppreference.com/w/cpp/container/unordered_map/find
                 size_t flag = useflag_id(string_view(start_it, end_it), create_flag_ids);
-                if(flag == npos)
+                if(flag == useflags.lock()->npos)
                     cout << "This useflag doesn't exist: " + string(string_view(start_it, end_it)) << endl;
                 else parsed_useflags.insert(make_pair(flag, state));
 
@@ -175,8 +175,7 @@ UseflagStates Parser::parse_useflags(const string_view &useflags_str, bool defau
     return parsed_useflags;
 }
 
-
-pair<PackageConstraint, UseflagStates> Parser::parse_pkguse_line(string_view pkguse_line)
+PkgUseToggles Parser::parse_pkguse_line(string_view pkguse_line)
 {
     /* Parse a line that contains a pkg specification then flag toggles
      * e.g. ">=app-misc/foo-1.2.3:0 +flag1 -flag2 flag3"
@@ -184,8 +183,6 @@ pair<PackageConstraint, UseflagStates> Parser::parse_pkguse_line(string_view pkg
 
     PackageConstraint pkg_constraint;
     UseflagStates flag_states;
-
-    pkg_constraint.is_valid = false;
 
     // remove eventual spurious spaces
     skim_spaces_at_the_edges(pkguse_line);
@@ -197,7 +194,7 @@ pair<PackageConstraint, UseflagStates> Parser::parse_pkguse_line(string_view pkg
     // e.g.      >=app-misc/foo-1.2.3 +foo -bar
     //           first space here:   ^
 
-    size_t first_space_char = pkguse_line.find(' ');
+    auto first_space_char = pkguse_line.find(' ');
     if(first_space_char == string_view::npos)
         return make_pair(pkg_constraint, flag_states);
 
@@ -207,9 +204,6 @@ pair<PackageConstraint, UseflagStates> Parser::parse_pkguse_line(string_view pkg
 
     //pkg constraints cannot contain useflag constraints
     pkg_constraint = parse_pkg_constraint(pkg_constraint_str_view);
-
-    if(not pkg_constraint.is_valid)
-        return make_pair(pkg_constraint, flag_states);
 
     // create a view on the useflags "+foo -bar" and parse it
     string_view useflags_str_view(pkguse_line);
@@ -224,7 +218,6 @@ PackageDependency Parser::parse_pkg_dependency(std::string_view pkg_dep_str)
     string_view str(pkg_dep_str);
 
     PackageDependency pkg_dependency;
-    pkg_dependency.is_valid = true;
     skim_spaces_at_the_edges(str);
 
     // Check if there is useflag constraints
@@ -257,8 +250,6 @@ PackageDependency Parser::parse_pkg_dependency(std::string_view pkg_dep_str)
 
     pkg_dependency.pkg_constraint = parse_pkg_constraint(str);
 
-    pkg_dependency.is_valid = pkg_dependency.is_valid and pkg_dependency.pkg_constraint.is_valid and pkg_dependency.use_dependencies.is_valid;
-
     return pkg_dependency;
 }
 
@@ -274,7 +265,6 @@ PackageConstraint Parser::parse_pkg_constraint(std::string_view pkg_constraint_s
     // Reset slot constraints to defaults and check if there is slot constraints
 
     PackageConstraint pkg_constraint;
-    pkg_constraint.is_valid = true;
 
     pkg_constraint.slot.rebuild_on_slot_change = false;
     pkg_constraint.slot.rebuild_on_subslot_change = false;
@@ -366,8 +356,6 @@ PackageConstraint Parser::parse_pkg_constraint(std::string_view pkg_constraint_s
     }
 
     pkg_constraint.pkg_id = pkgs.lock()->id_of(pkg_group_name);
-    if(pkg_constraint.pkg_id == npos)
-        pkg_constraint.is_valid = false;
 
     return pkg_constraint;
 }
@@ -380,7 +368,6 @@ UseDependencies Parser::parse_pkg_usedeps(string_view useflags_constraint_str)
      * */
 
     UseDependencies use_dependencies;
-    use_dependencies.is_valid = true;
 
     size_t next_comma;
     string_view single_constraint;
@@ -466,7 +453,7 @@ UseDependencies Parser::parse_pkg_usedeps(string_view useflags_constraint_str)
         }
 
         usedep.id = useflag_id(single_constraint, false);
-        use_dependencies.use_deps.emplace_back(move(usedep));
+        use_dependencies.emplace_back(move(usedep));
     }
 
     return use_dependencies;

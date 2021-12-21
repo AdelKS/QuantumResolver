@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <iostream>
 
 #include "namedvector.h"
 
@@ -39,7 +40,7 @@ size_t NamedVector<Object>::id_of(const string_view &name) const
     auto it = name_to_index.find(name);
     if( it != name_to_index.end())
         return it->second;
-    else return npos;
+    return npos;
 }
 
 template <class Object>

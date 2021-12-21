@@ -43,6 +43,8 @@ struct VersionConstraint
 {
     enum struct Type {NONE, SLESS, LESS, EQ_REV, EQ_STAR, EQ, GREATER, SGREATER};
 
+    VersionConstraint(): type(Type::NONE), version() {};
+
     Type type;
     EbuildVersion version;
 };

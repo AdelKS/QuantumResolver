@@ -58,6 +58,27 @@ void Database::load_ebuilds(const std::string &path)
     cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
 }
 
+void Database::load_installed_pkgs()
+{
+    fs::path installed_pkgs_path("/var/db/pkg");
+    if(not fs::is_directory(installed_pkgs_path))
+        throw runtime_error("Path is not a directory");
+
+    cout << "Reading installed ebuilds from " + installed_pkgs_path.string() << endl;
+    auto start = high_resolution_clock::now();
+
+    for(fs::directory_entry const& entry: fs::directory_iterator(installed_pkgs_path))
+    {
+        if(not entry.is_directory())
+            continue;
+
+        // TODO: Continue
+    }
+
+    auto end = high_resolution_clock::now();
+    cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
+}
+
 template <class Map>
 void update_map(Map &original, const Map &update)
 {
@@ -107,7 +128,6 @@ void Database::load_profile_settings()
 
     auto end = high_resolution_clock::now();
     cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
-
 
     cout << "Getting global use flags" << endl;
     start = high_resolution_clock::now();
@@ -164,7 +184,6 @@ void Database::load_profile_settings()
     end = high_resolution_clock::now();
     cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
 
-
     cout << "Forwarding them to ebuilds" << endl;
     start = high_resolution_clock::now();
 
@@ -195,10 +214,8 @@ void Database::load_profile_settings()
                 for(string_view line: read_file_lines(path))
                 {
                     const auto &[pkg_constraint, use_toggles] = parser->parse_pkguse_line(line);
-                    if(pkg_constraint.is_valid)
-                    {
+                    if(pkg_constraint.pkg_id != pkgs->npos) //TODO : deal with assigning unexisting useflags
                         (*pkgs)[pkg_constraint.pkg_id].assign_useflag_states(pkg_constraint, use_toggles, use_type);
-                    }
                 }
     }
     end = high_resolution_clock::now();
@@ -209,16 +226,14 @@ void Database::print_flag_states(const string &package_constraint_str)
 {
     cout << "We got here!" << endl;
     PackageConstraint pkg_constraint = parser->parse_pkg_constraint(package_constraint_str);
-    if(not pkg_constraint.is_valid)
+    if(pkg_constraint.pkg_id == pkgs->npos)
     {
         cout << "Invalid atom: " << package_constraint_str << endl;
         return;
     }
 
     for(auto &ebuild_id: (*pkgs)[pkg_constraint.pkg_id].get_matching_ebuilds(pkg_constraint))
-    {
         (*pkgs)[pkg_constraint.pkg_id][ebuild_id].print_flag_states();
-    }
 }
 
 void Database::parse_ebuild_metadata()
@@ -229,12 +244,25 @@ void Database::parse_ebuild_metadata()
 
 void Database::parse_deps()
 {
+    auto start = high_resolution_clock::now();
+
     for(auto &pkg: *pkgs)
         pkg.parse_deps();
+
+    auto end = high_resolution_clock::now();
+    cout << "Parsing time : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
 }
 
 void Database::populate(const std::string &overlay_cache_path)
 {
+    auto start = high_resolution_clock::now();
+
     load_ebuilds(overlay_cache_path);
     load_profile_settings();
+    parse_deps();
+
+    auto end = high_resolution_clock::now();
+
+    cout << "#####################################################" << endl;
+    cout << "Total time : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
 }

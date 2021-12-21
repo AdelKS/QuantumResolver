@@ -6,3 +6,11 @@
 - example package constraint: 
     - `>=xfce-base/libxfce4ui-4.12:=[gtk3(+)]` 
     - `>=x11-libs/gtk+-3.22:3[introspection?,X]`
+
+
+TODO:
+- Read /var/db/pkg for installed packages
+    - to see change of use flags and mark ebuilds that have flag change
+    - mark which version is installed
+- Read world set of user installed packages
+- Read system set: compare with world to understand better

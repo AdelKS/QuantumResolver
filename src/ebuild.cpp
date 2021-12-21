@@ -177,12 +177,6 @@ void Ebuild::add_deps(const Dependencies &deps, Dependencies::Type dep_type)
 {
     Dependencies &m_deps = dep_type == Dependencies::Type::BUILD ? bdeps : rdeps;
 
-    if(not deps.valid)
-    {
-        masked = true;
-        return;
-    }
-
     for(const auto &dep: deps.or_deps)
         m_deps.or_deps.push_back(dep);
 
@@ -194,6 +188,23 @@ void Ebuild::add_deps(const Dependencies &deps, Dependencies::Type dep_type)
 
     for(const auto &dep: deps.xor_deps)
         m_deps.xor_deps.push_back(dep);
+}
+
+void Ebuild::add_deps(const Dependencies &&deps, Dependencies::Type dep_type)
+{
+    Dependencies &m_deps = dep_type == Dependencies::Type::BUILD ? bdeps : rdeps;
+
+    for(const auto &dep: deps.or_deps)
+        m_deps.or_deps.emplace_back(move(dep));
+
+    for(const auto &dep: deps.plain_deps)
+        m_deps.plain_deps.emplace_back(move(dep));
+
+    for(const auto &dep: deps.use_cond_deps)
+        m_deps.use_cond_deps.emplace_back(move(dep));
+
+    for(const auto &dep: deps.xor_deps)
+        m_deps.xor_deps.emplace_back(move(dep));
 }
 
 Dependencies Ebuild::parse_dep_string(string_view dep_string)
@@ -219,11 +230,6 @@ Dependencies Ebuild::parse_dep_string(string_view dep_string)
             // retrieve the enclosed content and add it to "or" deps
             const string_view &enclosed_string = get_pth_enclosed_string_view(dep_string);
             deps.or_deps.emplace_back(parse_dep_string(enclosed_string));
-            if(not deps.or_deps.back().valid)
-            {
-                deps.valid = false;
-                return deps;
-            }
 
             // move prefix to skip the enclosed content +2 to remove the parentheses
             dep_string.remove_prefix(enclosed_string.size() + 2);
@@ -265,14 +271,8 @@ Dependencies Ebuild::parse_dep_string(string_view dep_string)
         else if(dep_string.starts_with('('))
         {
             // it's an all of group
-
             const string_view &enclosed_string = get_pth_enclosed_string_view(dep_string);
             deps.all_of_deps.emplace_back(parse_dep_string(enclosed_string));
-            if(not deps.all_of_deps.back().valid)
-            {
-                deps.valid = false;
-                return deps;
-            }
 
             // move prefix to skip the enclosed content +2 to remove the parentheses
             dep_string.remove_prefix(enclosed_string.size() + 2);
@@ -306,11 +306,6 @@ Dependencies Ebuild::parse_dep_string(string_view dep_string)
                 }
 
                 flag_cond.id = parser->useflag_id(constraint, false);
-                if(flag_cond.id == npos)
-                {
-                    deps.valid = false;
-                    return deps;
-                }
 
                 // retrieve the enclosed content and add it to "or" deps
                 const string_view &enclosed_string = get_pth_enclosed_string_view(dep_string);
@@ -328,14 +323,7 @@ Dependencies Ebuild::parse_dep_string(string_view dep_string)
             {
                 // it is a "plain" (this may be a nested call) pkg constraint
                 const PackageDependency& pkg_dep = parser->parse_pkg_dependency(constraint);
-                if(pkg_dep.is_valid)
-                    deps.plain_deps.emplace_back(pkg_dep);
-                else if(pkg_dep.blocker_type == PackageDependency::BlockerType::NONE)
-                {
-                    cout << "Could not find package: " << string(constraint) << endl;
-                    deps.valid = false;
-                    return deps;
-                }
+                deps.plain_deps.emplace_back(pkg_dep);
             }
         }
 
@@ -374,9 +362,9 @@ Ebuild::FlagState Ebuild::get_flag_state(const size_t &flag_id)
     FlagState state = FlagState::UNKNOWN;
 
     if(forced_flags.contains(flag_id))
-        state = FlagState::ON;
+        state = FlagState::FORCED;
     if(masked_flags.contains(flag_id))
-        state = FlagState::OFF;
+        state = FlagState::MASKED;
     if(state == FlagState::UNKNOWN)
     {
         const auto &flag_state_it = flag_states.find(flag_id);
@@ -392,10 +380,7 @@ bool Ebuild::respects_usestates(const UseDependencies &use_dependencies)
     if(not parsed_deps)
         parse_deps();
 
-    if(not use_dependencies.is_valid)
-        throw runtime_error("Testing against invalid use dependencies");
-
-    for(const UseDependency &use_dep: use_dependencies.use_deps)
+    for(const UseDependency &use_dep: use_dependencies)
     {
         if(use_dep.type == UseDependency::Type::CONDITIONAL)
             throw runtime_error("My programmer made a mistake: Testing against conditional use dependencies, only direct is allowed");
@@ -410,7 +395,7 @@ bool Ebuild::respects_usestates(const UseDependencies &use_dependencies)
                                      "      Asking for useflag: " + parser->useflag_name(use_dep.id) + " state but "
                                      " it has not been set and doesn't a fallback default");
         }
-        else if((flagstate == FlagState::ON) != use_dep.direct_dep.state)
+        else if((flagstate == FlagState::ON or flagstate == FlagState::FORCED) != use_dep.direct_dep.state)
             return false;
     }
 
@@ -419,9 +404,6 @@ bool Ebuild::respects_usestates(const UseDependencies &use_dependencies)
 
 bool Ebuild::respects_pkg_constraint(const PackageConstraint &pkg_constraint)
 {
-    if(not pkg_constraint.is_valid)
-        throw runtime_error("Testing against invalid pkg_constraint");
-
     return (pkg_constraint.slot.slot_str.empty() or pkg_constraint.slot.slot_str == slot) and
                   (pkg_constraint.slot.subslot_str.empty() or pkg_constraint.slot.subslot_str == subslot) and
                   eversion.respects_constraint(pkg_constraint.ver);

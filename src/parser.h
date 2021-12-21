@@ -13,12 +13,16 @@ using UseflagStates = std::unordered_map<std::size_t, bool>;
 
 struct SlotConstraint
 {
+    SlotConstraint(): rebuild_on_slot_change(false), rebuild_on_subslot_change(false), slot_str(), subslot_str() {}
+
     bool rebuild_on_slot_change, rebuild_on_subslot_change;
     std::string slot_str, subslot_str;
 };
 
 struct DirectUseDependency
 {
+    DirectUseDependency(): state(false), has_default_if_unexisting(false), default_if_unexisting(false) {};
+
     bool state;
     bool has_default_if_unexisting;
     bool default_if_unexisting;
@@ -26,6 +30,8 @@ struct DirectUseDependency
 
 struct ConditionalUseDependency
 {
+    ConditionalUseDependency(): forward_if_set(false), forward_if_not_set(false), forward_reverse_state(false) {};
+
     bool forward_if_set, forward_if_not_set;
     bool forward_reverse_state;
 };
@@ -34,6 +40,8 @@ struct UseDependency
 {
     enum struct Type {DIRECT, CONDITIONAL};
 
+    UseDependency(): type(Type::DIRECT), id(-1), direct_dep(), cond_dep() {};
+
     Type type;
     size_t id;
 
@@ -41,34 +49,34 @@ struct UseDependency
     ConditionalUseDependency cond_dep;
 };
 
-struct UseDependencies
-{
-    vector<UseDependency> use_deps;
-    bool is_valid;
-};
-
 struct PackageConstraint
 {
-    bool is_valid;
+    PackageConstraint(): pkg_id(-1), ver(), slot() {};
+
     std::size_t pkg_id;
     VersionConstraint ver;
     SlotConstraint slot;
 };
 
+using UseDependencies = std::vector<UseDependency>;
+
 struct PackageDependency
 {
     enum struct BlockerType {NONE, WEAK, STRONG};
+
+    PackageDependency(): blocker_type(BlockerType::NONE), pkg_constraint(), use_dependencies() {};
+
     BlockerType blocker_type;
-    bool is_valid;
     PackageConstraint pkg_constraint;
     UseDependencies use_dependencies;
 };
 
 using PkgUseToggles = std::pair<PackageConstraint, UseflagStates>;
 
-
 struct Toggle
 {
+    Toggle(): id(-1), state(false) {};
+
     size_t id;
     bool state;
 };
@@ -93,8 +101,6 @@ public:
     PackageDependency parse_pkg_dependency(std::string_view pkg_constraint_str);
     UseDependencies parse_pkg_usedeps(std::string_view useflags_constraint_str);
     PackageConstraint parse_pkg_constraint(std::string_view pkg_constraint_str);
-
-    static const size_t npos = -1;
 
 protected:
     std::weak_ptr<NamedVector<Package>> pkgs;

@@ -53,7 +53,7 @@ size_t pkg_namever_split_pos(const string_view &name_ver)
 
 }
 
-vector<pair<size_t, string>> split_string(const string &str, const vector<string> &separators, const size_t first_variable_sep_index)
+vector<pair<size_t, string_view>> split_string(const string_view &str_view, const vector<string> &separators, const size_t first_variable_sep_index)
 {
     /* splits string str size_to vector of pairs,
      * first_variable_sep_index is the index of the very first string that is split, who does not necessarily have a separator before it
@@ -63,12 +63,10 @@ vector<pair<size_t, string>> split_string(const string &str, const vector<string
      *  where the first index of each couple is the index of the matched separator 0 -> ".", 1 -> "_p", 2 -> "_pre", 3 -> "-r
      * */
 
-    // TODO: use string views and starts_with()
-
-    const size_t N = str.size();
+    const size_t N = str_view.size();
     size_t n;
 
-    vector<pair<size_t, string>> split;
+    vector<pair<size_t, string_view>> split;
 
     size_t curr_sep_index = first_variable_sep_index;
     size_t new_sep_index = 0;
@@ -88,7 +86,7 @@ vector<pair<size_t, string>> split_string(const string &str, const vector<string
                continue;
 
             // Use strncmp to leverage SIMD instructions
-            if(strncmp(str.c_str()+i, sep.c_str(), n) != 0)
+            if(not str_view.substr(i).starts_with(sep))
                 continue;
 
             if(not match)
@@ -103,17 +101,17 @@ vector<pair<size_t, string>> split_string(const string &str, const vector<string
         if(match)
         {
             const string &new_sep = separators[new_sep_index];
-            split.emplace_back(curr_sep_index, str.substr(match_start, i-match_start));
+            split.emplace_back(curr_sep_index, str_view.substr(match_start, i-match_start));
             match_start = i + new_sep.size();
             i += new_sep.size() - 1; // the for loop will increment that -1
             curr_sep_index = new_sep_index;
         }
     }
     if(match_start < N)
-        split.emplace_back(curr_sep_index, str.substr(match_start, N-match_start));
+        split.emplace_back(curr_sep_index, str_view.substr(match_start, N-match_start));
 
     else if(match_start > N)
-        throw runtime_error("string splitting failed, string=" + str);
+        throw runtime_error("string splitting failed, string=" + string(str_view));
 
     return split;
 }

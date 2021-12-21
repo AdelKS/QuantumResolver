@@ -25,7 +25,7 @@ class Ebuild
 {
 public:
     enum struct VersionType {STABLE, TESTING, LIVE};
-    enum struct FlagState {ON, OFF, UNKNOWN};
+    enum struct FlagState {ON, OFF, FORCED, MASKED, UNKNOWN};
 
     Ebuild(const std::string &ver,
            const std::filesystem::path &ebuild_path,
@@ -59,6 +59,7 @@ protected:
 
     Dependencies parse_dep_string(std::string_view dep_string);
     void add_deps(const Dependencies &deps, Dependencies::Type dep_type);
+    void add_deps(const Dependencies &&deps, Dependencies::Type dep_type);
 
     void add_iuse_flag(size_t flag_id, bool default_state);
     void add_iuse_flags(std::unordered_map<std::size_t, bool> useflags_and_default_states);

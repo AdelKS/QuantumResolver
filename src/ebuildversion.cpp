@@ -88,39 +88,39 @@ void EbuildVersion::set_version(std::string ver)
         throw runtime_error("Version string of invalid format : " + ver);
 
     version = ver;
-    vector<pair<size_t, string>> split = split_string(ver, ordered_separators, dot_index);
+    vector<pair<size_t, string_view>> split = split_string(ver, ordered_separators, dot_index);
 
     long letter_number = 0, number = 0;
-    unsigned long processed_chars = 0;
+    char *end_char;
     bool letter_found = false;
 
     // convert split to version_parsing
-    for(pair<size_t, string> &couple: split)
+    for(auto &[index, str]: split)
     {
-        if(couple.second.empty())
+        if(str.empty())
         {
-            version_parsing.emplace_back(couple.first, 0);
+            version_parsing.emplace_back(index, 0);
             continue;
         }
 
-        letter_found = isalpha(couple.second.back(), locale("C"));
+        letter_found = isalpha(str.back(), locale("C"));
         if(letter_found)
         {
-            if(couple.first != dot_index)
+            if(index != dot_index)
                 throw runtime_error("something is wrong with this version string: " + ver);
 
-            letter_number = couple.second.back();
-            couple.second = couple.second.substr(0, couple.second.size()-1);
+            letter_number = str.back();
+            str.remove_suffix(1);
         }
 
-        number = stol(couple.second, &processed_chars);
-        if(processed_chars == couple.second.size())
+        number = strtol(str.data(), &end_char, 10);
+        if(size_t(end_char - str.data()) == str.size())
         {
-          version_parsing.emplace_back(couple.first, number);
+          version_parsing.emplace_back(index, number);
           if(letter_found)
               version_parsing.emplace_back(dot_index, letter_number);
         }
-        else throw runtime_error("the following string couldn't be converted entirely to an integer: " + couple.second);
+        else throw runtime_error("the following string couldn't be converted entirely to an integer: " + string(str));
 
     }
 }
