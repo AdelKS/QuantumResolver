@@ -1,13 +1,16 @@
 #include <iostream>
+#include <algorithm>
 
 #include "package.h"
+#include "misc_utils.h"
+#include "database.h"
 
 using namespace std;
 namespace fs = filesystem;
 
 Package::Package(const std::string &pkg_group_name,
-                 const std::shared_ptr<Parser> &parser):
-    pkg_groupname(pkg_group_name), parser(parser)
+                 Database *database):
+     pkg_groupname(pkg_group_name), pkg_id(-1), database(database), ebuilds(), installed_pkg()
 {
 
 }
@@ -57,6 +60,11 @@ NamedVector<Ebuild>& Package::get_ebuilds()
     return ebuilds;
 }
 
+size_t Package::id_of(const std::string &version)
+{
+    return ebuilds.id_of(version);
+}
+
 Ebuild &Package::operator[](const string &ver)
 {
     size_t index = ebuilds.id_of(ver);
@@ -73,11 +81,34 @@ Ebuild &Package::operator[](const size_t &id)
 
 Ebuild& Package::add_version(const string &version, const fs::path &ebuild_path)
 {
-    size_t index = ebuilds.push_back(Ebuild(version, ebuild_path, parser), version);
+    size_t index = ebuilds.push_back(Ebuild(version, ebuild_path, database), version);
     ebuilds.back().set_id(index);
     ebuilds.back().set_pkg_id(pkg_id);
 
     return ebuilds[index];
+}
+
+void Package::set_installed_version(const std::string &version, const std::string &activated_useflags)
+{
+    installed_pkg.ebuild_id = ebuilds.id_of(version);
+    installed_pkg.activated_useflags = get_activated_useflags(database->parser.parse_useflags(activated_useflags, true));
+
+    if(installed_pkg.ebuild_id != ebuilds.npos and ebuilds[installed_pkg.ebuild_id].get_activated_flags() != installed_pkg.activated_useflags)
+    {
+        cout << "Change of flag state for " + pkg_groupname + ": ";
+        vector<size_t> sym_diff;
+        set_symmetric_difference(ebuilds[installed_pkg.ebuild_id].get_activated_flags().begin(), ebuilds[installed_pkg.ebuild_id].get_activated_flags().end(),
+                installed_pkg.activated_useflags.begin(), installed_pkg.activated_useflags.end(),
+                back_inserter(sym_diff));
+        for(const auto &flag_id: sym_diff)
+        {
+            if(installed_pkg.activated_useflags.contains(flag_id))
+                cout << "-" + database->get_useflag_name(flag_id);
+            else cout << "+" + database->get_useflag_name(flag_id);
+            cout << " ";
+        }
+        cout << endl;
+    }
 }
 
 void Package::assign_useflag_states(const PackageConstraint &constraint,

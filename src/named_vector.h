@@ -1,5 +1,5 @@
-#ifndef NAMEDVECTOR_H
-#define NAMEDVECTOR_H
+#ifndef NAMED_VECTOR_H
+#define NAMED_VECTOR_H
 
 #include <vector>
 #include <string>
@@ -43,6 +43,6 @@ protected:
     std::unordered_map<std::string, size_t, string_hash, std::equal_to<>> name_to_index;
 };
 
-#include "namedvector.cpp"
+#include "named_vector.cpp"
 
-#endif // NAMEDVECTOR_H
+#endif // NAMED_VECTOR_H

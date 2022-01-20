@@ -1,4 +1,6 @@
 #include <iostream>
+#include <chrono>
+using namespace std::chrono;
 
 using namespace std;
 
@@ -8,11 +10,11 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-    Database database;
+
+    cout << argc << " " << argv << endl;
     try
     {
-        cout << argc << endl;
-        database.populate("/var/db/repos/gentoo/metadata/md5-cache");
+        Database database;
     }
     catch(runtime_error &err)
     {

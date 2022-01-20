@@ -1,5 +1,5 @@
-#ifndef PARSEUTILS_H
-#define PARSEUTILS_H
+#ifndef MISC_UTILS_H
+#define MISC_UTILS_H
 
 #include <string>
 #include <vector>
@@ -13,12 +13,13 @@
 #include <deque>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 
 #define LINE_MAX_SIZE 10000
 
 std::string exec(const char* cmd);
 
-size_t pkg_namever_split_pos(const std::string_view &name_ver);
+std::size_t pkg_namever_split_pos(const std::string_view &name_ver);
 
 void skim_spaces_at_the_edges(std::string_view &str);
 
@@ -30,7 +31,13 @@ std::deque<std::string> read_file_lines(const std::filesystem::path file_path,
                                         size_t max_line_size = LINE_MAX_SIZE);
 
 std::deque<std::filesystem::path> get_regular_files(const std::filesystem::path &path);
-std::vector<std::pair<size_t, std::string_view>> split_string(const std::string_view &str_view, const std::vector<std::string> &separators, const size_t first_variable_sep_index = 0);
 
+std::vector<std::pair<std::size_t, std::string_view>> split_string(const std::string_view &str_view,
+                                                              const std::vector<std::string> &separators,
+                                                              const size_t first_variable_sep_index = 0);
 
-#endif // PARSEUTILS_H
+std::unordered_set<std::size_t> get_activated_useflags(std::unordered_map<std::size_t, bool> flag_states);
+
+const std::vector<std::filesystem::path> &get_profiles_tree();
+
+#endif // MISC_UTILS_H

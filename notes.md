@@ -9,6 +9,7 @@
 
 
 TODO:
+- Finish use_database
 - Read /var/db/pkg for installed packages
     - to see change of use flags and mark ebuilds that have flag change
     - mark which version is installed

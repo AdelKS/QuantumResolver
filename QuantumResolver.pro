@@ -14,22 +14,22 @@ Debug:QMAKE_CXXFLAGS += -march=native
 SOURCES += \
         src/database.cpp \
         src/ebuild.cpp \
-        src/ebuildversion.cpp \
+        src/ebuild_version.cpp \
         src/main.cpp \
-        src/namedvector.cpp \
+        src/misc_utils.cpp \
+        src/named_vector.cpp \
         src/package.cpp \
         src/parser.cpp \
-        src/parseutils.cpp \
         src/resolver.cpp
 
 HEADERS += \
     src/database.h \
     src/ebuild.h \
-    src/ebuildversion.h \
-    src/namedvector.h \
+    src/ebuild_version.h \
+    src/misc_utils.h \
+    src/named_vector.h \
     src/package.h \
     src/parser.h \
-    src/parseutils.h \
     src/resolver.h
 
 DISTFILES += \

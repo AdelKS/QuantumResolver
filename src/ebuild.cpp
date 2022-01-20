@@ -1,14 +1,15 @@
 #include "ebuild.h"
 
-#include "parseutils.h"
+#include "misc_utils.h"
+#include "database.h"
 
 using namespace std;
 
 Ebuild::Ebuild(const std::string &ver,
                const std::filesystem::path &ebuild_path,
-               shared_ptr<Parser> &parser):
-    eversion(ver), parser(parser), masked(false), parsed_metadata(false), parsed_deps(false),
-    ebuild_path(ebuild_path), version_type(VersionType::LIVE)
+               Database *database):
+    eversion(ver), database(database), masked(false), parsed_metadata(false), parsed_deps(false),
+    ebuild_path(ebuild_path), ebuild_type(EbuildType::LIVE)
 {
 }
 
@@ -61,7 +62,7 @@ void Ebuild::parse_metadata()
         {
             // shrink by 5 to remove the "IUSE=" in the beginning
             ebuild_line_view.remove_prefix(5);
-            auto flag_states = parser->parse_useflags(ebuild_line_view, false, true);
+            auto flag_states = database->parser.parse_useflags(ebuild_line_view, false, true);
             add_iuse_flags(flag_states);
             break;
         }
@@ -83,12 +84,12 @@ void Ebuild::parse_metadata()
         else if(ebuild_line_view.starts_with("KEYWORDS"))
         {
             ebuild_line_view.remove_prefix(9);
-            const auto &keywords = parser->parse_keywords(ebuild_line_view);
+            const auto &keywords = database->parser.parse_keywords(ebuild_line_view);
             for(const auto &[keyword_id, is_testing]: keywords)
             {
                 if(flag_states.contains(keyword_id))
                 {
-                    version_type = is_testing ? VersionType::TESTING : VersionType::STABLE;
+                    ebuild_type = is_testing ? EbuildType::TESTING : EbuildType::STABLE;
                     break;
                 }
             }
@@ -120,19 +121,33 @@ void Ebuild::assign_useflag_state(size_t flag_id, bool state, const FlagAssignTy
        flag_states[flag_id] = state;
     }
     else if(assign_type == FlagAssignType::FORCE or
-            (assign_type == FlagAssignType::STABLE_FORCE and version_type == VersionType::STABLE))
+            (assign_type == FlagAssignType::STABLE_FORCE and ebuild_type == EbuildType::STABLE))
     {
         if(state)
             forced_flags.insert(flag_id);
         else forced_flags.erase(flag_id);
     }
     else if(assign_type == FlagAssignType::MASK or
-            (assign_type == FlagAssignType::STABLE_MASK and version_type == VersionType::STABLE))
+            (assign_type == FlagAssignType::STABLE_MASK and ebuild_type == EbuildType::STABLE))
     {
         if(state)
             masked_flags.insert(flag_id);
         else masked_flags.erase(flag_id);
     }
+
+    // update activated flags set
+    if(iuse_flags.contains(flag_id))
+    {
+        const auto &flag_state = get_flag_state(flag_id);
+        if(flag_state == FlagState::FORCED or flag_state == FlagState::ON)
+            activated_flags.insert(flag_id);
+        else activated_flags.erase(flag_id); // TODO: UNKNOWN state use flags here are treated as disabled
+    }
+}
+
+const std::unordered_set<size_t> &Ebuild::get_activated_flags()
+{
+    return activated_flags;
 }
 
 void Ebuild::assign_useflag_states(const UseflagStates &useflag_states, const FlagAssignType &assign_type)
@@ -305,7 +320,7 @@ Dependencies Ebuild::parse_dep_string(string_view dep_string)
                     flag_cond.state = false;
                 }
 
-                flag_cond.id = parser->useflag_id(constraint, false);
+                flag_cond.id = database->get_useflag_id(constraint, false);
 
                 // retrieve the enclosed content and add it to "or" deps
                 const string_view &enclosed_string = get_pth_enclosed_string_view(dep_string);
@@ -322,7 +337,7 @@ Dependencies Ebuild::parse_dep_string(string_view dep_string)
             else
             {
                 // it is a "plain" (this may be a nested call) pkg constraint
-                const PackageDependency& pkg_dep = parser->parse_pkg_dependency(constraint);
+                const PackageDependency& pkg_dep = database->parser.parse_pkg_dependency(constraint);
                 deps.plain_deps.emplace_back(pkg_dep);
             }
         }
@@ -338,17 +353,17 @@ void Ebuild::print_flag_states(bool iuse_only)
     if(not parsed_metadata)
         parse_metadata();
 
-    cout << parser->pkg_groupname(pkg_id) << "   Version: " << eversion.get_version() << endl;
+    cout << database->get_pkg_groupname(pkg_id) << "   Version: " << eversion.get_version() << endl;
 
     cout << "  USE=\" ";
     for(const auto &[flag_id, flag_state]: flag_states)
         if(not iuse_only or iuse_flags.contains(flag_id))
         {
             if(forced_flags.contains(flag_id))
-                cout << "(+" <<  parser->useflag_name(flag_id) << ") ";
+                cout << "(+" <<  database->get_useflag_name(flag_id) << ") ";
             else if(masked_flags.contains(flag_id))
-                cout << "(-" <<  parser->useflag_name(flag_id) << ") ";
-            else cout << (flag_state ? "" : "-") << parser->useflag_name(flag_id) << " ";
+                cout << "(-" <<  database->get_useflag_name(flag_id) << ") ";
+            else cout << (flag_state ? "" : "-") << database->get_useflag_name(flag_id) << " ";
         }
     cout << "\"" << endl;
 
@@ -391,8 +406,8 @@ bool Ebuild::respects_usestates(const UseDependencies &use_dependencies)
         {
             if(use_dep.direct_dep.has_default_if_unexisting and use_dep.direct_dep.state != use_dep.direct_dep.default_if_unexisting)
                 return false;
-            else throw runtime_error("In: " + parser->pkg_groupname(pkg_id) + "  id: " + to_string(id) + "\n" +
-                                     "      Asking for useflag: " + parser->useflag_name(use_dep.id) + " state but "
+            else throw runtime_error("In: " + database->get_pkg_groupname(pkg_id) + "  id: " + to_string(id) + "\n" +
+                                     "      Asking for useflag: " + database->get_useflag_name(use_dep.id) + " state but "
                                      " it has not been set and doesn't a fallback default");
         }
         else if((flagstate == FlagState::ON or flagstate == FlagState::FORCED) != use_dep.direct_dep.state)

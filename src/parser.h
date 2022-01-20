@@ -5,11 +5,12 @@
 #include <string_view>
 #include <vector>
 #include <string>
+#include <memory>
 
-#include "ebuildversion.h"
-#include "namedvector.h"
+#include "ebuild_version.h"
+#include "named_vector.h"
 
-using UseflagStates = std::unordered_map<std::size_t, bool>;
+
 
 struct SlotConstraint
 {
@@ -71,8 +72,6 @@ struct PackageDependency
     UseDependencies use_dependencies;
 };
 
-using PkgUseToggles = std::pair<PackageConstraint, UseflagStates>;
-
 struct Toggle
 {
     Toggle(): id(-1), state(false) {};
@@ -82,16 +81,15 @@ struct Toggle
 };
 
 class Package;
+class Database;
+
+using UseflagStates = std::unordered_map<std::size_t, bool>;
+using PkgUseToggles = std::pair<PackageConstraint, UseflagStates>;
 
 class Parser
 {
 public:
-    Parser(std::shared_ptr<NamedVector<Package>> pkgs,
-           std::shared_ptr<NamedVector<std::string>> useflags);
-
-    size_t useflag_id(const string_view &flag_str, bool create_ids);
-    const string& pkg_groupname(size_t pkg_id);
-    const string& useflag_name(size_t useflag_id);
+    Parser(Database *database);
 
     UseflagStates parse_useflags(const std::deque<std::string> &useflag_lines, bool default_state, bool create_flag_ids = false);
     UseflagStates parse_useflags(const std::string_view &useflags_str, bool default_state, bool create_ids = false);
@@ -103,8 +101,7 @@ public:
     PackageConstraint parse_pkg_constraint(std::string_view pkg_constraint_str);
 
 protected:
-    std::weak_ptr<NamedVector<Package>> pkgs;
-    std::weak_ptr<NamedVector<std::string>> useflags;
+    Database *database;
 
 };
 

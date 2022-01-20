@@ -2,8 +2,8 @@
 #include <algorithm>
 #include <iostream>
 
-#include "ebuildversion.h"
-#include "parseutils.h"
+#include "ebuild_version.h"
+#include "misc_utils.h"
 
 using namespace std;
 

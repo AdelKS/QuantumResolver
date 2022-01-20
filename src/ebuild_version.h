@@ -1,5 +1,5 @@
-#ifndef EBUILDVERSION_H
-#define EBUILDVERSION_H
+#ifndef EBUILD_VERSION_H
+#define EBUILD_VERSION_H
 
 #include <unordered_set>
 #include <string>
@@ -51,4 +51,4 @@ struct VersionConstraint
 
 
 
-#endif // EBUILDVERSION_H
+#endif // EBUILD_VERSION_H

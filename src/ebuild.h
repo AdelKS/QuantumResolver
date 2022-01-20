@@ -4,8 +4,8 @@
 #include <string>
 #include <filesystem>
 
-#include "ebuildversion.h"
-#include "namedvector.h"
+#include "ebuild_version.h"
+#include "named_vector.h"
 #include "parser.h"
 
 enum struct FlagAssignType {DIRECT, MASK, STABLE_MASK, FORCE, STABLE_FORCE};
@@ -20,16 +20,17 @@ struct Dependencies
 };
 
 class Package;
+class Database;
 
 class Ebuild
 {
 public:
-    enum struct VersionType {STABLE, TESTING, LIVE};
+    enum struct EbuildType {STABLE, TESTING, LIVE};
     enum struct FlagState {ON, OFF, FORCED, MASKED, UNKNOWN};
 
     Ebuild(const std::string &ver,
            const std::filesystem::path &ebuild_path,
-           shared_ptr<Parser> &parser);
+           Database *database);
 
     bool operator <(const Ebuild &other);
     void parse_deps();
@@ -38,6 +39,8 @@ public:
     void print_flag_states(bool iuse_only = true);
 
     FlagState get_flag_state(const size_t &flag_id);
+    const std::unordered_set<size_t> &get_activated_flags();
+
     bool respects_pkg_dep(const PackageDependency &pkg_dep);
 
     bool respects_pkg_constraint(const PackageConstraint &pkg_constraint);
@@ -65,11 +68,11 @@ protected:
     void add_iuse_flags(std::unordered_map<std::size_t, bool> useflags_and_default_states);
 
     EbuildVersion eversion;
-    std::shared_ptr<Parser> parser;
+    Database *database;
 
     bool masked, parsed_metadata, parsed_deps;
     std::filesystem::path ebuild_path;
-    VersionType version_type;
+    EbuildType ebuild_type;
 
     Dependencies bdeps, rdeps;
     std::deque<std::string> ebuild_lines;
@@ -77,6 +80,8 @@ protected:
     std::unordered_set<size_t> iuse_flags;
     std::unordered_set<size_t> masked_flags, forced_flags;
     UseflagStates flag_states;
+    std::unordered_set<size_t> activated_flags; /* list of flags that are to be used if this ebuild is to be emerged
+                                                 * this list is to be dynamically updated at each flag assign */
 
     size_t id, pkg_id;
     std::string slot, subslot;

@@ -1,47 +1,14 @@
 #include "parser.h"
 
-#include "parseutils.h"
+#include "misc_utils.h"
 #include "package.h"
+#include "database.h"
 
 using namespace std;
 
-Parser::Parser(shared_ptr<NamedVector<Package> > pkgs,
-               shared_ptr<NamedVector<string> > useflags) :
-    pkgs(pkgs), useflags(useflags)
+Parser::Parser(Database *database): database(database)
 {
 
-}
-
-size_t Parser::useflag_id(const string_view &flag_str, bool create_ids)
-{
-    /* Returns the id of the useflag given by useflag_str
-     * if create_ids = true, it creates an id if it doesn't exist already
-     * if create_ids = false and the string hasn't been encountered before, returns npos
-     */
-
-    // TODO: figure out how to use string_view for performance
-    //       c.f. https://en.cppreference.com/w/cpp/container/unordered_map/find
-
-    size_t useflag_id = useflags.lock()->id_of(flag_str);
-    if(useflag_id == useflags.lock()->npos)
-    {
-        if(create_ids)
-        {
-            useflag_id = useflags.lock()->emplace_back(string(flag_str), flag_str);
-        }
-    }
-
-    return useflag_id;
-}
-
-const string& Parser::pkg_groupname(size_t pkg_id)
-{
-    return (*pkgs.lock())[pkg_id].get_pkg_groupname();
-}
-
-const string& Parser::useflag_name(size_t useflag_id)
-{
-    return (*useflags.lock())[useflag_id];
 }
 
 UseflagStates Parser::parse_useflags(const std::deque<std::string> &useflag_lines, bool default_state, bool create_flag_ids)
@@ -98,7 +65,7 @@ UseflagStates Parser::parse_keywords(const std::string_view &keywords_str)
                 // TODO: string(string_view()) is counter-productive for performance
                 //       figure out how to do it with Hash::is_transparent and KeyEqual::is_transparent
                 //       c.f. https://en.cppreference.com/w/cpp/container/unordered_map/find
-                size_t keyword_id = useflag_id(string_view(start_it, end_it), true);
+                size_t keyword_id = database->get_useflag_id(string_view(start_it, end_it), true);
                 keywords.insert(make_pair(keyword_id, testing));
 
                 // reset the iterators and the state boolean
@@ -158,8 +125,8 @@ UseflagStates Parser::parse_useflags(const string_view &useflags_str, bool defau
                 // TODO: string(string_view()) is counter-productive for performance
                 //       figure out how to do it with Hash::is_transparent and KeyEqual::is_transparent
                 //       c.f. https://en.cppreference.com/w/cpp/container/unordered_map/find
-                size_t flag = useflag_id(string_view(start_it, end_it), create_flag_ids);
-                if(flag == useflags.lock()->npos)
+                size_t flag = database->get_useflag_id(string_view(start_it, end_it), create_flag_ids);
+                if(flag == database->npos)
                     cout << "This useflag doesn't exist: " + string(string_view(start_it, end_it)) << endl;
                 else parsed_useflags.insert(make_pair(flag, state));
 
@@ -355,7 +322,7 @@ PackageConstraint Parser::parse_pkg_constraint(std::string_view pkg_constraint_s
         pkg_group_name = str;
     }
 
-    pkg_constraint.pkg_id = pkgs.lock()->id_of(pkg_group_name);
+    pkg_constraint.pkg_id = database->get_pkg_id(pkg_group_name);
 
     return pkg_constraint;
 }
@@ -452,7 +419,7 @@ UseDependencies Parser::parse_pkg_usedeps(string_view useflags_constraint_str)
             single_constraint.remove_suffix(3);
         }
 
-        usedep.id = useflag_id(single_constraint, false);
+        usedep.id = database->get_useflag_id(single_constraint, false);
         use_dependencies.emplace_back(move(usedep));
     }
 

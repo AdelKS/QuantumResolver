@@ -1,8 +1,11 @@
-#include "parseutils.h"
+#include "misc_utils.h"
 
 #include <iostream>
 #include <cstring>
 #include <fstream>
+
+#include <chrono>
+using namespace std::chrono;
 
 using namespace std;
 namespace fs = filesystem;
@@ -85,7 +88,6 @@ vector<pair<size_t, string_view>> split_string(const string_view &str_view, cons
             if(n > N - i)
                continue;
 
-            // Use strncmp to leverage SIMD instructions
             if(not str_view.substr(i).starts_with(sep))
                 continue;
 
@@ -192,4 +194,65 @@ deque<string> read_file_lines(const std::filesystem::path file_path,
     }
 
     return file_lines;
+}
+
+unordered_set<size_t> get_activated_useflags(std::unordered_map<size_t, bool> flag_states)
+{
+    unordered_set<size_t> activated_flags;
+    for(const auto &[flag_id, flag_state]: flag_states)
+    {
+        if(flag_state)
+            activated_flags.insert(flag_id);
+    }
+    return activated_flags;
+}
+
+const vector<fs::path> &get_profiles_tree()
+{
+    fs::path profile_symlink("/etc/portage/make.profile");
+    if(not fs::is_symlink(profile_symlink))
+        throw runtime_error("/etc/portage/make.profile doesn't exist or isn't a symlink");
+
+    fs::path profile = fs::canonical(profile_symlink);
+    cout << "Absolute path of the profile " << profile.string() << endl;
+
+    cout << "Populating profile tree" << endl;
+    auto start = high_resolution_clock::now();
+
+    static vector<fs::path> profile_tree = {"/etc/portage", profile};
+    static bool tree_already_populated = false;
+
+    if(not tree_already_populated)
+    {
+        tree_already_populated = true;
+        deque<fs::path> explore_queue = {profile};
+
+        while(not explore_queue.empty())
+        {
+            const fs::path curr_profile = explore_queue.back(); explore_queue.pop_back();
+
+            const fs::path &parent_file_path(curr_profile.string() + "/parent");
+            if(fs::is_regular_file(parent_file_path))
+            {
+                deque<fs::path> new_profiles;
+                // Invert the list of explored profiles in the parent file
+                // so the first line of "parent" is explored first
+                for(const string &line: read_file_lines(parent_file_path))
+                {
+                    const auto &new_profile = fs::canonical(fs::path(curr_profile.string() + "/" + line + "/"));
+                    new_profiles.push_front(new_profile);
+                }
+                for(const auto &profile: new_profiles)
+                {
+                    profile_tree.push_back(profile);
+                    explore_queue.push_back(profile);
+                }
+            }
+        }
+    }
+
+    auto end = high_resolution_clock::now();
+    cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
+
+    return profile_tree;
 }

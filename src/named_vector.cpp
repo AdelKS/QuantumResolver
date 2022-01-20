@@ -1,7 +1,7 @@
 #include <stdexcept>
 #include <iostream>
 
-#include "namedvector.h"
+#include "named_vector.h"
 
 using namespace std;
 
