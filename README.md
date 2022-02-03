@@ -4,9 +4,9 @@ This is an attempt at writing a faster Gentoo dependency resolver with a hope to
 
 The current main ideas:
 - Map each package name and use flag to a unique integer, for example `sys-devel/gcc` -> `13`, `pgo` -> `13` (use flags do not live in the same world as package names), and work only with integers while resolving dependencies.
-  - For this purpose, implemented the class [IndexedVector](src/indexedvector.h) that enables accessing objects with an integer index and another type of index. It will be used to access package information through either their name, e.g. `sys-devel/gcc` or their index `13`.
+  - For this purpose, implemented the class [NamedVector](src/named_vector.h) that enables accessing objects with an integer index or a string index. It will be used to access package information through either their name, e.g. `sys-devel/gcc` or their index `13`.
 - Parse the initial files on disk only once and produce a fast intermediate representation that helps speeding up dependency resolution
-  - This has been done for now for `ebuild` versions: see [ebuildversion.cpp](src/ebuildversion.cpp)
+  - This has been done for now for `ebuild` versions: see [ebuild_version.cpp](src/ebuild_version.cpp)
 
 
 #### How to ebuild
