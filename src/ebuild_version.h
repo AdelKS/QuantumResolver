@@ -29,13 +29,13 @@ public:
 
 protected:
     std::string version;
-    std::vector<std::pair<size_t, long>> version_parsing; // see operator <
+    std::vector<std::pair<std::size_t, long>> version_parsing; // see operator <
 
     const static std::vector<std::string> ordered_separators;
     const static std::regex ver_regexp;
     const static std::pair<std::string, std::vector<std::string>> version_single_letter;
-    const static size_t dot_index;
-    const static std::unordered_set<size_t> smaller_than_nothing_separators;
+    const static std::size_t dot_index;
+    const static std::unordered_set<std::size_t> smaller_than_nothing_separators;
 
 };
 

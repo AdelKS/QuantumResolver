@@ -3,12 +3,12 @@
 
 #include <string>
 #include <filesystem>
+#include <limits>
 
 #include "ebuild_version.h"
 #include "named_vector.h"
 #include "parser.h"
-
-enum struct FlagAssignType {DIRECT, MASK, STABLE_MASK, FORCE, STABLE_FORCE};
+#include "useflags.h"
 
 struct Dependencies
 {
@@ -19,18 +19,16 @@ struct Dependencies
     std::vector<std::pair<Toggle, Dependencies>> use_cond_deps;
 };
 
-class Package;
 class Database;
 
 class Ebuild
 {
 public:
     enum struct EbuildType {STABLE, TESTING, LIVE};
-    enum struct FlagState {ON, OFF, FORCED, MASKED, UNKNOWN};
 
     Ebuild(const std::string &ver,
            const std::filesystem::path &ebuild_path,
-           Database *database);
+           Database *db);
 
     bool operator <(const Ebuild &other);
     void parse_deps();
@@ -56,7 +54,7 @@ public:
 
     const EbuildVersion &get_version();
 
-    static const size_t npos = -1;
+    static const size_t npos = std::numeric_limits<std::size_t>::max();
 
 protected:
 
@@ -68,7 +66,7 @@ protected:
     void add_iuse_flags(std::unordered_map<std::size_t, bool> useflags_and_default_states);
 
     EbuildVersion eversion;
-    Database *database;
+    Database *db;
 
     bool masked, parsed_metadata, parsed_deps;
     std::filesystem::path ebuild_path;

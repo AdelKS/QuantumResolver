@@ -9,8 +9,8 @@ using namespace std;
 namespace fs = filesystem;
 
 Package::Package(const std::string &pkg_group_name,
-                 Database *database):
-     pkg_groupname(pkg_group_name), pkg_id(-1), database(database), ebuilds(), installed_pkg()
+                 Database *db):
+     pkg_groupname(pkg_group_name), pkg_id(-1), db(db), ebuilds(), installed_pkg()
 {
 
 }
@@ -81,7 +81,7 @@ Ebuild &Package::operator[](const size_t &id)
 
 Ebuild& Package::add_version(const string &version, const fs::path &ebuild_path)
 {
-    size_t index = ebuilds.push_back(Ebuild(version, ebuild_path, database), version);
+    size_t index = ebuilds.push_back(Ebuild(version, ebuild_path, db), version);
     ebuilds.back().set_id(index);
     ebuilds.back().set_pkg_id(pkg_id);
 
@@ -91,7 +91,7 @@ Ebuild& Package::add_version(const string &version, const fs::path &ebuild_path)
 void Package::set_installed_version(const std::string &version, const std::string &activated_useflags)
 {
     installed_pkg.ebuild_id = ebuilds.id_of(version);
-    installed_pkg.activated_useflags = get_activated_useflags(database->parser.parse_useflags(activated_useflags, true));
+    installed_pkg.activated_useflags = get_activated_useflags(db->parser.parse_useflags(activated_useflags, true));
 
     if(installed_pkg.ebuild_id != ebuilds.npos and ebuilds[installed_pkg.ebuild_id].get_activated_flags() != installed_pkg.activated_useflags)
     {
@@ -103,8 +103,8 @@ void Package::set_installed_version(const std::string &version, const std::strin
         for(const auto &flag_id: sym_diff)
         {
             if(installed_pkg.activated_useflags.contains(flag_id))
-                cout << "-" + database->get_useflag_name(flag_id);
-            else cout << "+" + database->get_useflag_name(flag_id);
+                cout << "-" + db->useflags.get_flag_name(flag_id);
+            else cout << "+" + db->useflags.get_flag_name(flag_id);
             cout << " ";
         }
         cout << endl;

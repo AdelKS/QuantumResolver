@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cstring>
 #include <fstream>
+#include <cassert>
 
 #include <chrono>
 using namespace std::chrono;
@@ -158,10 +159,7 @@ deque<fs::path> get_regular_files(const fs::path &path)
     return regular_files;
 }
 
-deque<string> read_file_lines(const std::filesystem::path file_path,
-                              std::deque<std::string> starts_with,
-                              bool omit_comments_and_empty,
-                              size_t max_line_size)
+deque<string> read_file_lines(const std::filesystem::path file_path)
 {
     /* Reads the lines of the file referenced by file_path
      * and returns them.
@@ -171,29 +169,86 @@ deque<string> read_file_lines(const std::filesystem::path file_path,
     if(not file.is_open())
         throw runtime_error("Couldn't open parent file" + file_path.string());
 
-    char line[max_line_size];
+    char line[LINE_MAX_SIZE];
     deque<string> file_lines;
+    bool escaped_prev_line = false;
 
-    while(file.getline(line, max_line_size, '\n'))
+    while(file.getline(line, LINE_MAX_SIZE, '\n'))
     {
         string_view view(line);
         skim_spaces_at_the_edges(view);
-        if(not omit_comments_and_empty or (not view.starts_with("#") and not view.empty()))
+        if(view.starts_with("#") or view.empty())
+            continue;
+
+        bool escaped_next_line = false;
+        if(view.ends_with('\\'))
         {
-            if(starts_with.empty())
-                file_lines.emplace_back(string(view));
-            else for(const string &start_line: starts_with)
-            {
-                if(view.starts_with(start_line))
-                {
-                    file_lines.emplace_back(string(view));
-                    break;
-                }
-            }
+            view.remove_suffix(1);
+            escaped_next_line = true;
         }
+
+        if(escaped_prev_line)
+        {
+            assert(file_lines.size() != 0); // cannot append to the previous stirng in the list if there's nothing
+
+            file_lines.back().append(view);
+        }
+        else file_lines.emplace_back(string(view));
+
+        escaped_prev_line = escaped_next_line;
     }
 
     return file_lines;
+}
+
+
+deque<pair<string, string>> read_vars(const std::filesystem::path file_path)
+{
+    deque<pair<string, string>> vars;
+    const auto &file_lines = read_file_lines(file_path);
+    for(const string &line: file_lines)
+    {
+        string_view view(line);
+        size_t eq_sign_pos = view.find('=');
+
+        if(not (eq_sign_pos != string_view::npos and
+                eq_sign_pos < view.size() - 2 and // to make sure that the line doesn't end with ="
+                view[eq_sign_pos+1] == '"' and
+                view.back() == '"'))
+            throw "File " + file_path.string() + " has problems in its variable definition";
+
+        vars.emplace_back(
+            make_pair(
+                string(view.substr(0, eq_sign_pos)),
+                string(view.substr(eq_sign_pos + 2, view.size() - eq_sign_pos - 3)) // to remove the last "
+            )
+        );
+    }
+
+    return vars;
+}
+
+string_view get_next_word(string_view &words_line)
+{
+    // pops the first words from worlds_line and returns it
+    // making words_line smaller in the process
+    // e.g. "   hello there   " -> return "hello" and make words_line = "there"
+
+    skim_spaces_at_the_edges(words_line);
+    if(words_line.empty())
+        return string_view();
+
+    size_t next_space = words_line.find(' ');
+    string_view ret;
+    if(next_space == string_view::npos)
+        words_line.swap(ret);
+    else
+    {
+        ret = words_line.substr(0, next_space);
+        words_line = words_line.substr(next_space + 1);
+    }
+
+    return ret;
 }
 
 unordered_set<size_t> get_activated_useflags(std::unordered_map<size_t, bool> flag_states)
@@ -255,4 +310,16 @@ const vector<fs::path> &get_profiles_tree()
     cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
 
     return profile_tree;
+}
+
+void to_upper(string& s)
+{
+    std::transform(s.begin(), s.end(), s.begin(), std::ptr_fun<int, int>(std::toupper));
+}
+
+string to_lower(string s)
+{
+    string copy(s);
+    std::transform(copy.begin(), copy.end(), copy.begin(), std::ptr_fun<int, int>(std::tolower));
+    return copy;
 }

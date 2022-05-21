@@ -1,15 +1,11 @@
-#include "parser.h"
-
 #include "misc_utils.h"
 #include "package.h"
 #include "database.h"
 
 using namespace std;
 
-Parser::Parser(Database *database): database(database)
-{
-
-}
+Parser::Parser(Database *db) : db(db)
+{}
 
 UseflagStates Parser::parse_useflags(const std::deque<std::string> &useflag_lines, bool default_state, bool create_flag_ids)
 {
@@ -65,7 +61,7 @@ UseflagStates Parser::parse_keywords(const std::string_view &keywords_str)
                 // TODO: string(string_view()) is counter-productive for performance
                 //       figure out how to do it with Hash::is_transparent and KeyEqual::is_transparent
                 //       c.f. https://en.cppreference.com/w/cpp/container/unordered_map/find
-                size_t keyword_id = database->get_useflag_id(string_view(start_it, end_it), true);
+                size_t keyword_id = db->useflags.add_flag(string_view(start_it, end_it));
                 keywords.insert(make_pair(keyword_id, testing));
 
                 // reset the iterators and the state boolean
@@ -121,12 +117,12 @@ UseflagStates Parser::parse_useflags(const string_view &useflags_str, bool defau
         {
             if(*end_it == ' ' or end_it == useflags_str.end())
             {
-                // We isolated a useflag between start_it and end_it
-                // TODO: string(string_view()) is counter-productive for performance
-                //       figure out how to do it with Hash::is_transparent and KeyEqual::is_transparent
-                //       c.f. https://en.cppreference.com/w/cpp/container/unordered_map/find
-                size_t flag = database->get_useflag_id(string_view(start_it, end_it), create_flag_ids);
-                if(flag == database->npos)
+                size_t flag;
+                if(create_flag_ids)
+                    flag = db->useflags.add_flag(string_view(start_it, end_it));
+                else flag = db->useflags.get_flag_id(string_view(start_it, end_it));
+
+                if(flag == db->useflags.npos)
                     cout << "This useflag doesn't exist: " + string(string_view(start_it, end_it)) << endl;
                 else parsed_useflags.insert(make_pair(flag, state));
 
@@ -322,7 +318,7 @@ PackageConstraint Parser::parse_pkg_constraint(std::string_view pkg_constraint_s
         pkg_group_name = str;
     }
 
-    pkg_constraint.pkg_id = database->get_pkg_id(pkg_group_name);
+    pkg_constraint.pkg_id = db->repo.get_pkg_id(pkg_group_name);
 
     return pkg_constraint;
 }
@@ -419,7 +415,7 @@ UseDependencies Parser::parse_pkg_usedeps(string_view useflags_constraint_str)
             single_constraint.remove_suffix(3);
         }
 
-        usedep.id = database->get_useflag_id(single_constraint, false);
+        usedep.id = db->useflags.get_flag_id(single_constraint);
         use_dependencies.emplace_back(move(usedep));
     }
 

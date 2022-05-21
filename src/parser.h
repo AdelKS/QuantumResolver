@@ -80,7 +80,6 @@ struct Toggle
     bool state;
 };
 
-class Package;
 class Database;
 
 using UseflagStates = std::unordered_map<std::size_t, bool>;
@@ -89,7 +88,8 @@ using PkgUseToggles = std::pair<PackageConstraint, UseflagStates>;
 class Parser
 {
 public:
-    Parser(Database *database);
+
+    Parser(Database *db);
 
     UseflagStates parse_useflags(const std::deque<std::string> &useflag_lines, bool default_state, bool create_flag_ids = false);
     UseflagStates parse_useflags(const std::string_view &useflags_str, bool default_state, bool create_ids = false);
@@ -101,7 +101,7 @@ public:
     PackageConstraint parse_pkg_constraint(std::string_view pkg_constraint_str);
 
 protected:
-    Database *database;
+    Database *db;
 
 };
 

@@ -14,7 +14,7 @@ class Database;
 class Package
 {
 public:
-    Package(const std::string &pkg_group_name, Database *database);
+    Package(const std::string &pkg_group_name, Database *db);
 
     Ebuild &add_version(const std::string &version, const std::filesystem::path &ebuild_path);
 
@@ -53,7 +53,7 @@ protected:
     std::string pkg_groupname; // e.g. sys-devel/gcc
     std::size_t pkg_id;
 
-    Database *database;
+    Database *db;
     NamedVector<Ebuild> ebuilds; // indexed by ver, e.g. 11.1.0-r1
     InstalledPkg installed_pkg;
 };

@@ -6,11 +6,8 @@ using namespace std;
 
 #include "database.h"
 
-
-
 int main(int argc, char *argv[])
 {
-
     cout << argc << " " << argv << endl;
     try
     {

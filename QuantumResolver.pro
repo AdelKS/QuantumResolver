@@ -5,11 +5,8 @@ CONFIG -= qt
 
 TARGET = quantum
 
-Release:QMAKE_CFLAGS += -march=native -O3
-Release:QMAKE_CXXFLAGS += -march=native -O3
-
-Debug:QMAKE_CFLAGS += -march=native
-Debug:QMAKE_CXXFLAGS += -march=native
+QMAKE_CFLAGS += -march=native -Wpedantic -Wall -Wconversion
+QMAKE_CXXFLAGS += -march=native -Wpedantic -Wall -Wconversion
 
 SOURCES += \
         src/database.cpp \
@@ -20,17 +17,23 @@ SOURCES += \
         src/named_vector.cpp \
         src/package.cpp \
         src/parser.cpp \
-        src/resolver.cpp
+        src/repo.cpp \
+        src/resolver.cpp \
+        src/useflags.cpp
 
 HEADERS += \
+    src/bijection.h \
     src/database.h \
     src/ebuild.h \
     src/ebuild_version.h \
     src/misc_utils.h \
+    src/multikeymap.h \
     src/named_vector.h \
     src/package.h \
     src/parser.h \
-    src/resolver.h
+    src/repo.h \
+    src/resolver.h \
+    src/useflags.h
 
 DISTFILES += \
     README.md \
