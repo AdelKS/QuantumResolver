@@ -44,23 +44,13 @@ size_t NamedVector<Object>::id_of(const string_view &name) const
 }
 
 template <class Object>
-size_t NamedVector<Object>::push_back(const Object& object, const string_view &name)
+size_t NamedVector<Object>::push_back(Object object, string name)
 {
     size_t index = objects.size();
-    objects.push_back(object);
+    objects.push_back(std::move(object));
     objects.back().set_id(index);
 
-    name_to_index[string(name)] = index;
-    return index;
-}
-
-template <class Object>
-size_t NamedVector<Object>::emplace_back(const Object&& object, const string_view &name)
-{
-    size_t index = objects.size();
-    objects.emplace_back(object);
-
-    name_to_index[string(name)] = index;
+    name_to_index[std::move(name)] = index;
     return index;
 }
 
