@@ -1,6 +1,7 @@
 #include <locale>
 #include <algorithm>
 #include <iostream>
+#include <ranges>
 
 #include "ebuild_version.h"
 #include "misc_utils.h"
@@ -11,7 +12,7 @@ template<class Object>
 size_t index_of(const vector<Object> vec, Object obj)
 {
     // Get the index of obj in vec
-    return find(vec.cbegin(), vec.cend(), obj) - vec.cbegin();
+    return size_t(find(vec.cbegin(), vec.cend(), obj) - vec.cbegin());
 }
 
 // The regex that validates EBUILD version strings
@@ -33,9 +34,13 @@ inline bool is_smaller_than_nothing(const size_t sep_index)
     return 1 <= sep_index and sep_index <= 4;
 }
 
-EbuildVersion::EbuildVersion(string ver)
+EbuildVersion::EbuildVersion() : live(false)
 {
-    set_version(ver);
+}
+
+EbuildVersion::EbuildVersion(string ver) : live(false)
+{
+    set_version(std::move(ver));
 }
 
 bool EbuildVersion::respects_constraint(const VersionConstraint &constraint)
@@ -75,6 +80,18 @@ const std::string &EbuildVersion::get_version()
     return version;
 }
 
+bool EbuildVersion::is_live()
+{
+    return live;
+}
+
+void EbuildVersion::update_live_bool(const std::vector<std::pair<std::size_t, std::string_view>>& split)
+{
+    /// Update the bool 'live' that says if this version is a live version
+    auto res = ranges::find_if(split.rbegin(), split.rend(), [](const auto& pair){return pair.first == dot_index;});
+    live = res != split.rend() and res->second.starts_with("9999");
+}
+
 void EbuildVersion::set_version(std::string ver)
 {
     if(ver.empty())
@@ -87,42 +104,48 @@ void EbuildVersion::set_version(std::string ver)
     if(not regex_match(ver, ver_regexp))
         throw runtime_error("Version string of invalid format : " + ver);
 
-    version = ver;
     vector<pair<size_t, string_view>> split = split_string(ver, ordered_separators, dot_index);
 
-    long letter_number = 0, number = 0;
-    char *end_char;
+    // check the string split for "9999" to know if the ebuild is a live one
+    update_live_bool(split);
+
+    long letter_number = 0;
+    ulong number = 0;
+    size_t end_pos;
     bool letter_found = false;
 
     // convert split to version_parsing
-    for(auto &[index, str]: split)
+    for(auto &[index, str_view]: split)
     {
-        if(str.empty())
+        if(str_view.empty())
         {
             version_parsing.emplace_back(index, 0);
             continue;
         }
 
-        letter_found = isalpha(str.back(), locale("C"));
+        letter_found = isalpha(str_view.back(), locale("C"));
         if(letter_found)
         {
             if(index != dot_index)
                 throw runtime_error("something is wrong with this version string: " + ver);
 
-            letter_number = str.back();
-            str.remove_suffix(1);
+            letter_number = str_view.back();
+            str_view.remove_suffix(1);
         }
 
-        number = strtol(str.data(), &end_char, 10);
-        if(size_t(end_char - str.data()) == str.size())
+        // one could use `strtoul` wiht str_view.data() but we cannot limit where to stop.
+        number = stoul(string(str_view), &end_pos);
+        if(end_pos == str_view.size())
         {
           version_parsing.emplace_back(index, number);
           if(letter_found)
               version_parsing.emplace_back(dot_index, letter_number);
         }
-        else throw runtime_error("the following string couldn't be converted entirely to an integer: " + string(str));
+        else throw runtime_error("the following string couldn't be converted entirely to an integer: " + string(str_view));
 
     }
+
+    version = std::move(ver);
 }
 
 

@@ -6,12 +6,14 @@
 
 using namespace std;
 
-Ebuild::Ebuild(const std::string &ver,
-               const std::filesystem::path &ebuild_path,
+Ebuild::Ebuild(string ver,
+               std::filesystem::path ebuild_path,
                Database *db):
-    eversion(ver), db(db), masked(false), parsed_metadata(false), parsed_deps(false),
-    ebuild_path(ebuild_path), ebuild_type(EbuildType::LIVE)
+    eversion(std::move(ver)), db(db), masked(false), parsed_metadata(false), parsed_deps(false),
+    ebuild_path(std::move(ebuild_path)), ebuild_type(EbuildType::UNKNOWN)
 {
+    if(eversion.is_live())
+        ebuild_type = EbuildType::LIVE;
 }
 
 void Ebuild::parse_deps()
@@ -65,7 +67,6 @@ void Ebuild::parse_metadata()
             ebuild_line_view.remove_prefix(5);
             auto flag_states = db->parser.parse_useflags(ebuild_line_view, false, true);
             add_iuse_flags(flag_states);
-            break;
         }
         else if(ebuild_line_view.starts_with("SLOT"))
         {
@@ -82,7 +83,7 @@ void Ebuild::parse_metadata()
                 subslot = ebuild_line_view.substr(subslot_sep_index+1);
             }
         }
-        else if(ebuild_line_view.starts_with("KEYWORDS"))
+        else if(ebuild_type != EbuildType::UNKNOWN and ebuild_line_view.starts_with("KEYWORDS"))
         {
             ebuild_line_view.remove_prefix(9);
             const auto &keywords = db->parser.parse_keywords(ebuild_line_view);
@@ -181,6 +182,7 @@ size_t Ebuild::get_pkg_id()
 
 bool Ebuild::operator <(const Ebuild &other)
 {
+    assert(pkg_id == other.pkg_id); // Make sure we are comparing ebuilds of the same package
     return eversion < other.eversion;
 }
 
@@ -367,7 +369,6 @@ void Ebuild::print_flag_states(bool iuse_only)
             else cout << (flag_state ? "" : "-") << db->useflags.get_flag_name(flag_id) << " ";
         }
     cout << "\"" << endl;
-
 }
 
 FlagState Ebuild::get_flag_state(const size_t &flag_id)

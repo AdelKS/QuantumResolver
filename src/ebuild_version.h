@@ -12,7 +12,8 @@ struct VersionConstraint;
 class EbuildVersion
 {
 public:
-    EbuildVersion(std::string ver = std::string());
+    EbuildVersion();
+    EbuildVersion(std::string ver);
     void set_version(std::string ver);
 
     friend bool operator <  (const EbuildVersion &a, const EbuildVersion &b); // returns true if this < 1.23
@@ -26,10 +27,14 @@ public:
     bool respects_constraint(const VersionConstraint &constraint);
 
     const std::string &get_version();
+    bool is_live();
 
 protected:
+    void update_live_bool(const std::vector<std::pair<std::size_t, std::string_view>>& split);
+
     std::string version;
-    std::vector<std::pair<std::size_t, long>> version_parsing; // see operator <
+    std::vector<std::pair<std::size_t, ulong>> version_parsing; // see operator <
+    bool live;
 
     const static std::vector<std::string> ordered_separators;
     const static std::regex ver_regexp;
@@ -43,9 +48,7 @@ struct VersionConstraint
 {
     enum struct Type {NONE, SLESS, LESS, EQ_REV, EQ_STAR, EQ, GREATER, SGREATER};
 
-    VersionConstraint(): type(Type::NONE), version() {};
-
-    Type type;
+    Type type = Type::NONE;
     EbuildVersion version;
 };
 

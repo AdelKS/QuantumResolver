@@ -13,7 +13,7 @@
 struct Dependencies
 {
     enum struct Type {BUILD, RUNTIME};
-    bool valid;
+    bool valid = false;
     std::vector<Dependencies> or_deps, xor_deps, at_most_one_deps, all_of_deps;
     std::vector<PackageDependency> plain_deps;
     std::vector<std::pair<Toggle, Dependencies>> use_cond_deps;
@@ -24,10 +24,10 @@ class Database;
 class Ebuild
 {
 public:
-    enum struct EbuildType {STABLE, TESTING, LIVE};
+    enum struct EbuildType {UNKNOWN, STABLE, TESTING, LIVE};
 
-    Ebuild(const std::string &ver,
-           const std::filesystem::path &ebuild_path,
+    Ebuild(std::string ver,
+           std::filesystem::path ebuild_path,
            Database *db);
 
     bool operator <(const Ebuild &other);
@@ -66,7 +66,7 @@ protected:
     void add_iuse_flags(std::unordered_map<std::size_t, bool> useflags_and_default_states);
 
     EbuildVersion eversion;
-    Database *db;
+    Database* db;
 
     bool masked, parsed_metadata, parsed_deps;
     std::filesystem::path ebuild_path;
