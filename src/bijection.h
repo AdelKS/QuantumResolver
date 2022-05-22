@@ -55,26 +55,26 @@ public:
     {
         auto map_it = husband_index.find(h);
         if(map_it != husband_index.end())
-            return couples.begin() + map_it->second;
-        else return couples.end();
+            return couples.cbegin() + map_it->second;
+        else return couples.cend();
     }
 
     auto find_couple(const Wife &w)
     {
         auto map_it = wife_index.find(w);
         if(map_it != wife_index.end())
-            return couples.begin() + map_it->second;
-        else return couples.end();
+            return couples.cbegin() + map_it->second;
+        else return couples.cend();
     }
 
-    auto begin()
+    auto cbegin()
     {
-        return couples.begin();
+        return couples.cbegin();
     }
 
-    auto end()
+    auto cend()
     {
-        return couples.end();
+        return couples.cend();
     }
 
     std::size_t size()

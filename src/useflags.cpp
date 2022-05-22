@@ -17,7 +17,7 @@ UseFlags::UseFlags(Database *db) : db(db)
 size_t UseFlags::add_flag(const string_view &flag_str)
 {
     auto it = useflags.find_couple(string(flag_str));
-    if(it == useflags.end())
+    if(it == useflags.cend())
     {
         useflags.add_couple(string(flag_str), useflags.size());
         return  useflags.size() - 1;
@@ -28,7 +28,7 @@ size_t UseFlags::add_flag(const string_view &flag_str)
 size_t UseFlags::get_flag_id(const std::string_view &flag_str)
 {
     auto it = useflags.find_couple(string(flag_str));
-    if(it == useflags.end())
+    if(it == useflags.cend())
     {
         return npos;
     }
@@ -38,7 +38,7 @@ size_t UseFlags::get_flag_id(const std::string_view &flag_str)
 std::string UseFlags::get_flag_name(const size_t &id)
 {
     auto it = useflags.find_couple(id);
-    if(it == useflags.end())
+    if(it == useflags.cend())
     {
         return "";
     }
