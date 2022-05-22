@@ -17,6 +17,10 @@ int main(int argc, char *argv[])
     {
         cout << err.what() << endl;
     }
+    catch(...)
+    {
+        cout << "something went wrong" << endl;
+    }
 
     return 0;
 }
