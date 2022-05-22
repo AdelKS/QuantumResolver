@@ -2,7 +2,7 @@
 
 using namespace std;
 
-Database::Database() : repo(this), parser(this), useflags(this)
+Database::Database() :  parser(this), useflags(this), repo(this)
 {
 
 }

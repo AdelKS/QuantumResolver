@@ -12,9 +12,9 @@ class Database
 public:
     Database();
 
-    Repo repo;
     Parser parser;
     UseFlags useflags;
+    Repo repo;
 };
 
 #endif // DATABASE_H
