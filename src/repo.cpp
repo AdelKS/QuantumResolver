@@ -18,7 +18,7 @@ Repo::Repo(Database *db) : db(db)
 {
 //    auto start = high_resolution_clock::now();
 
-//    load_ebuilds("/var/db/repos/gentoo/metadata/md5-cache");
+    load_ebuilds("/var/db/repos/gentoo/metadata/md5-cache");
 //    load_installed_pkgs();
 //    parse_deps();
 
@@ -109,7 +109,7 @@ void Repo::load_ebuilds(const std::string &path)
         size_t pkg_id = pkgs.id_of(pkg_category_name);
         if(pkg_id == pkgs.npos)
         {
-            pkg_id = pkgs.emplace_back(Package(pkg_category_name, db), pkg_category_name);
+            pkg_id = pkgs.push_back(Package(pkg_category_name, db), pkg_category_name);
             pkgs.back().set_id(pkg_id);
         }
 
@@ -118,7 +118,7 @@ void Repo::load_ebuilds(const std::string &path)
     }
 
     auto end = high_resolution_clock::now();
-    cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
+    cout << "Loaded ebuilds in : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
 }
 
 void Repo::load_installed_pkgs()

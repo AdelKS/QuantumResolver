@@ -82,12 +82,12 @@ void UseFlags::clear_unprefixed_expands()
 
 void UseFlags::make_expand_hidden(std::size_t prefix_index, bool hidden)
 {
-    use_expand.get_from_index(prefix_index).hidden = hidden;
+    use_expand.object_from_index(prefix_index).hidden = hidden;
 }
 
 void UseFlags::make_expand_implicit(std::size_t prefix_index, bool implicit)
 {
-    use_expand.get_from_index(prefix_index).implicit = implicit;
+    use_expand.object_from_index(prefix_index).implicit = implicit;
 }
 
 void UseFlags::remove_expand(std::size_t prefix_index)
@@ -144,24 +144,26 @@ void UseFlags::handle_use_expand_line(string_view use_expand_type, const vector<
         if(remove_value)
             value.remove_prefix(1);
 
-        string prefix_str(value);
+        UseExpandName prefix_str(value);
         size_t prefix_index = use_expand.index_from_key(prefix_str);
         if(prefix_index == use_expand.npos)
         {
             if(remove_value)
                 throw string("removing a prefix that doesn't exist: ") + string(value);
-            prefix_index = use_expand.push_back(UseExpand(prefix_str));
+            prefix_index = use_expand.push_back(UseExpandType());
             use_expand.assign_key(prefix_index, prefix_str);
         }
 
-        UseExpand& use_exp = use_expand.get_from_index(prefix_index);
+        assert(not remove_value or use_expand_type == "USE_EXPAND_HIDDEN"); // Removing use expands hasn't been implemented for now
+
+        UseExpandType& use_exp = use_expand.object_from_index(prefix_index);
 
         if(use_expand_type == "USE_EXPAND_UNPREFIXED")
             use_exp.unprefixed = true;
         else if(use_expand_type == "USE_EXPAND_IMPLICIT")
             use_exp.implicit = true;
         else if (use_expand_type == "USE_EXPAND_HIDDEN")
-            use_exp.hidden = true;
+            use_exp.hidden = not remove_value;
     }
 }
 
@@ -190,20 +192,20 @@ void UseFlags::populate_profile_flags()
                 cout << line << endl;
             cout << "+++++++++++++++ END OF FILE CONTENT +++++++++++++++" << endl;
 
-            for(const auto &[var, values_line]: read_vars(make_path))
+            for(auto &[var, values_line]: read_vars(make_path))
             {
                 vector<string_view> words;
                 {
-                    cout << "------------" << endl;
-                    cout << "Variable: " << var << endl;
-                    cout << "Values: " << endl;
+//                    cout << "------------" << endl;
+//                    cout << "Variable: " << var << endl;
+//                    cout << "Values: " << endl;
                     string_view values_line_view(values_line);
                     while(not values_line_view.empty())
                     {
                         words.push_back(get_next_word(values_line_view));
-                        cout << words.back() << " ; ";
+//                        cout << words.back() << " ; ";
                     }
-                    cout << endl;
+//                    cout << endl;
                 }
 
                 if(var == "USE")
@@ -218,40 +220,45 @@ void UseFlags::populate_profile_flags()
                 else
                 {
                     size_t expand_index = use_expand.npos;
-                    bool found_use_expand_values = false;
-                    if(var.starts_with("USE_EXPAND_VALUES_"))
-                    {
-                        found_use_expand_values = true;
-                        string_view use_expand_prefix(var);
-                        use_expand_prefix.remove_prefix(string("USE_EXPAND_VALUES_").size());
-                        expand_index = use_expand.index_from_key(string(use_expand_prefix));
-                        if(expand_index == use_expand.npos)
-                            throw std::invalid_argument("Found USE_EXPAND_VALUES definition line without defining the PREFIX beforehand");
-                    }
-                    else expand_index = use_expand.index_from_key(var);
+                    bool found_use_expand_values = var.starts_with("USE_EXPAND_VALUES_");
+                    if(found_use_expand_values)
+                        var = var.substr(string("USE_EXPAND_VALUES_").size());
 
-                    if(expand_index != use_expand.npos)
-                    {
-                        const UseExpand expand_type = use_expand.get_from_index(expand_index);
-                        for(const string_view& use_expand_flag_tail: words)
-                        {
-                            string use_flag_str;
-                            if(expand_type.unprefixed)
-                                use_flag_str = use_expand_flag_tail;
-                            else use_flag_str = to_lower(expand_type.prefix) + "_" + string(use_expand_flag_tail);
+                    expand_index = use_expand.index_from_key(UseExpandName(var));
 
-                            size_t flag_id = add_flag(use_flag_str);
-                            use_expand.assign_key(expand_index, flag_id);
-                            use_expand.assign_key(expand_index, use_flag_str);
-                            if(not found_use_expand_values)
-                                use.insert(flag_id);
-                        }
+                    if(expand_index == use_expand.npos)
+                    {
+                        if(found_use_expand_values)
+                            throw runtime_error("Found USE_EXPAND_VALUES_" + var + " without prior definition of " + var);
+                        continue;
                     }
+
+                    const UseExpandType expand_type = use_expand.object_from_index(expand_index);
+                    for(string_view& use_expand_flag_tail: words)
+                    {
+                        if(use_expand_flag_tail.starts_with('-'))
+                            throw runtime_error("Wrongly using " + var + " as incremental variable as it contains " + string(use_expand_flag_tail));
+
+                        string use_flag_str;
+                        if(expand_type.unprefixed)
+                            use_flag_str = use_expand_flag_tail;
+                        else use_flag_str = to_lower(var) + "_" + string(use_expand_flag_tail);
+
+                        size_t flag_id = add_flag(use_flag_str);
+                        use_expand.assign_key(expand_index, flag_id);
+                        use_expand.assign_key(expand_index, use_flag_str);
+                        if(not found_use_expand_values)
+                            use.insert(flag_id);
+                    }
+
                 }
 
             }
         }
     }
+
+    const auto& arch_flags = use_expand.keys_from_key<FlagName>(UseExpandName("ARCH"));
+    // TODO: Set current arch
 
     cout << "Reading global forced and masked flags from profile tree" << endl;
     auto start = high_resolution_clock::now();
@@ -302,5 +309,5 @@ void UseFlags::populate_profile_flags()
 //    cout << endl;
 
     auto end = high_resolution_clock::now();
-    cout << "Total time : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
+    cout << "Read use expands and global useflags from profile tree in : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
 }

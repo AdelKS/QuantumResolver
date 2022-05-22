@@ -78,7 +78,6 @@ Ebuild &Package::operator[](const size_t &id)
     return ebuilds[id];
 }
 
-
 Ebuild& Package::add_version(const string &version, const fs::path &ebuild_path)
 {
     size_t index = ebuilds.push_back(Ebuild(version, ebuild_path, db), version);
