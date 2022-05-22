@@ -4,6 +4,7 @@
 #include <string>
 #include <filesystem>
 #include <deque>
+#include <limits>
 
 #include "ebuild.h"
 #include "named_vector.h"
@@ -45,8 +46,7 @@ protected:
 
     struct InstalledPkg
     {
-        InstalledPkg() : ebuild_id(-1), activated_useflags() {}
-        std::size_t ebuild_id; // can be npos
+        std::size_t ebuild_id = NamedVector<Ebuild>::npos; // can be npos
         std::unordered_set<std::size_t> activated_useflags;
     };
 

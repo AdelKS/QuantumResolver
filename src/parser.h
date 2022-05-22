@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <limits>
 
 #include "ebuild_version.h"
 #include "named_vector.h"
@@ -14,37 +15,30 @@
 
 struct SlotConstraint
 {
-    SlotConstraint(): rebuild_on_slot_change(false), rebuild_on_subslot_change(false), slot_str(), subslot_str() {}
-
-    bool rebuild_on_slot_change, rebuild_on_subslot_change;
+    bool rebuild_on_slot_change = false, rebuild_on_subslot_change = false;
     std::string slot_str, subslot_str;
 };
 
 struct DirectUseDependency
 {
-    DirectUseDependency(): state(false), has_default_if_unexisting(false), default_if_unexisting(false) {};
-
-    bool state;
-    bool has_default_if_unexisting;
-    bool default_if_unexisting;
+    bool state = false;
+    bool has_default_if_unexisting = false;
+    bool default_if_unexisting = false;
 };
 
 struct ConditionalUseDependency
 {
-    ConditionalUseDependency(): forward_if_set(false), forward_if_not_set(false), forward_reverse_state(false) {};
-
-    bool forward_if_set, forward_if_not_set;
-    bool forward_reverse_state;
+    bool forward_if_set = false;
+    bool forward_if_not_set = false;
+    bool forward_reverse_state = false;
 };
 
 struct UseDependency
 {
     enum struct Type {DIRECT, CONDITIONAL};
 
-    UseDependency(): type(Type::DIRECT), id(-1), direct_dep(), cond_dep() {};
-
-    Type type;
-    size_t id;
+    Type type = Type::DIRECT;
+    size_t id = std::numeric_limits<size_t>::max();
 
     DirectUseDependency direct_dep;
     ConditionalUseDependency cond_dep;
@@ -52,9 +46,7 @@ struct UseDependency
 
 struct PackageConstraint
 {
-    PackageConstraint(): pkg_id(-1), ver(), slot() {};
-
-    std::size_t pkg_id;
+    std::size_t pkg_id = std::numeric_limits<size_t>::max();
     VersionConstraint ver;
     SlotConstraint slot;
 };
@@ -65,19 +57,15 @@ struct PackageDependency
 {
     enum struct BlockerType {NONE, WEAK, STRONG};
 
-    PackageDependency(): blocker_type(BlockerType::NONE), pkg_constraint(), use_dependencies() {};
-
-    BlockerType blocker_type;
+    BlockerType blocker_type = BlockerType::NONE;
     PackageConstraint pkg_constraint;
     UseDependencies use_dependencies;
 };
 
 struct Toggle
 {
-    Toggle(): id(-1), state(false) {};
-
-    size_t id;
-    bool state;
+    size_t id = std::numeric_limits<size_t>::max();
+    bool state = false;
 };
 
 class Database;
