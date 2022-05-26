@@ -99,9 +99,10 @@ requires ((std::is_same_v<AnyKey1, KeyType> || ...) and (std::is_same_v<AnyKey2,
 const std::unordered_set<AnyKey1>& MultiKeyMap<Object, KeyType...>::keys_from_key(const AnyKey2 &key)
 {
     std::size_t index = index_from_key(key);
-    if(index == npos)
-        return std::unordered_set<AnyKey1>();
-    else return std::get<index_of_type<AnyKey1>()>(rev_maps)[index];
+
+    assert(index != npos);
+
+    return std::get<index_of_type<AnyKey1>()>(rev_maps)[index];
 }
 
 template <class Object, class... KeyType> requires (sizeof...(KeyType) > 0)
