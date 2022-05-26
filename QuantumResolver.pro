@@ -27,7 +27,7 @@ HEADERS += \
     src/ebuild.h \
     src/ebuild_version.h \
     src/misc_utils.h \
-    src/multikeymap.h \
+    src/multikey_map.h \
     src/named_vector.h \
     src/package.h \
     src/parser.h \

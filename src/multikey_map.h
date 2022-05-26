@@ -1,5 +1,5 @@
-#ifndef MULTIKEYMAP_H
-#define MULTIKEYMAP_H
+#ifndef MULTIKEY_MAP_H
+#define MULTIKEY_MAP_H
 
 #include <tuple>
 #include <unordered_map>
@@ -165,4 +165,4 @@ std::size_t MultiKeyMap<Object, KeyType...>::objects_count()
     return container.size();
 }
 
-#endif // MULTIKEYMAP_H
+#endif // MULTIKEY_MAP_H

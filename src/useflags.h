@@ -3,7 +3,7 @@
 
 #include "named_vector.h"
 #include "bijection.h"
-#include "multikeymap.h"
+#include "multikey_map.h"
 #include "misc_utils.h"
 
 #include <unordered_set>
