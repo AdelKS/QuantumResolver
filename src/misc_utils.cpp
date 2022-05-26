@@ -6,9 +6,9 @@
 #include <cassert>
 
 #include <chrono>
-using namespace std::chrono;
 
 using namespace std;
+using namespace chrono;
 namespace fs = filesystem;
 
 string exec(const char* cmd) {
@@ -24,7 +24,7 @@ string exec(const char* cmd) {
     return result;
 }
 
-void skim_spaces_at_the_edges(std::string_view &str)
+void skim_spaces_at_the_edges(string_view &str)
 {
     // remove spaces at the beginning, if there are any
     // if str is made of only spaces, the resulting view is empty
@@ -159,7 +159,7 @@ deque<fs::path> get_regular_files(const fs::path &path)
     return regular_files;
 }
 
-deque<string> read_file_lines(const std::filesystem::path file_path)
+deque<string> read_file_lines(const filesystem::path file_path)
 {
     /* Reads the lines of the file referenced by file_path
      * and returns them.
@@ -189,7 +189,7 @@ deque<string> read_file_lines(const std::filesystem::path file_path)
 
         if(escaped_prev_line)
         {
-            assert(file_lines.size() != 0); // cannot append to the previous stirng in the list if there's nothing
+            assert(file_lines.size() != 0); // cannot append to the previous string in the list if there's nothing
 
             file_lines.back().append(view);
         }
@@ -202,7 +202,7 @@ deque<string> read_file_lines(const std::filesystem::path file_path)
 }
 
 
-deque<pair<string, string>> read_vars(const std::filesystem::path file_path)
+deque<pair<string, string>> read_vars(const filesystem::path file_path)
 {
     deque<pair<string, string>> vars;
     const auto &file_lines = read_file_lines(file_path);
@@ -251,7 +251,7 @@ string_view get_next_word(string_view &words_line)
     return ret;
 }
 
-unordered_set<size_t> get_activated_useflags(std::unordered_map<size_t, bool> flag_states)
+unordered_set<size_t> get_activated_useflags(unordered_map<size_t, bool> flag_states)
 {
     unordered_set<size_t> activated_flags;
     for(const auto &[flag_id, flag_state]: flag_states)
@@ -312,14 +312,106 @@ const vector<fs::path> &get_profiles_tree()
     return profile_tree;
 }
 
-void to_upper(string& s)
+string to_lower(string_view sv)
 {
-    std::transform(s.begin(), s.end(), s.begin(), std::ptr_fun<int, int>(std::toupper));
+    string copy(sv);
+    // TODO: update with ranges::for_each when it gest in gcc or clang
+    for_each(copy.begin(), copy.end(), [](char& c){c = tolower(c, std::locale());});
+    return copy;
 }
 
-string to_lower(string s)
+string to_lower(string&& sv)
 {
-    string copy(s);
-    std::transform(copy.begin(), copy.end(), copy.begin(), std::ptr_fun<int, int>(std::tolower));
+    for_each(sv.begin(), sv.end(), [](char& c){c = tolower(c, std::locale());});
+    return sv;
+}
+
+string to_upper(string_view sv)
+{
+    string copy(sv);
+    for_each(copy.begin(), copy.end(), [](char& c){c = toupper(c, std::locale());});
     return copy;
+}
+
+string to_upper(string&& sv)
+{
+    for_each(sv.begin(), sv.end(), [](char& c){c = toupper(c, std::locale());});
+    return sv;
+}
+
+unordered_set<size_t> operator + (const unordered_set<size_t>& a,
+                                            const unordered_set<size_t>& b)
+{
+    unordered_set<size_t> ret(a);
+    ret.insert(b.begin(), b.end());
+    return ret;
+}
+
+unordered_set<size_t> operator + (unordered_set<size_t>&& a,
+                                            const unordered_set<size_t>& b)
+{
+    a.insert(b.begin(), b.end());
+    return a;
+}
+
+unordered_set<size_t> operator & (const unordered_set<size_t>& a,
+                                            const unordered_set<size_t>& b)
+{
+    const unordered_set<size_t>& smaller = a.size() <= b.size() ? a : b;
+    const unordered_set<size_t>& bigger = a.size() > b.size() ? a : b;
+
+    unordered_set<size_t> ret;
+    for(size_t val: smaller)
+        if(bigger.contains(val))
+            ret.insert(val);
+
+    return ret;
+}
+
+unordered_set<size_t> operator & (unordered_set<size_t>&& a,
+                                            const unordered_set<size_t>& b)
+{
+    for(auto it = a.begin(); it != a.end();)
+    {
+       if(not b.contains(*it))
+          it = a.erase(it);
+       else ++it;
+    }
+
+    return a;
+}
+
+unordered_set<size_t> operator - (const unordered_set<size_t>& a,
+                                            const unordered_set<size_t>& b)
+{
+    if(a.size() <= b.size())
+    {
+        unordered_set<size_t> ret;
+        for(size_t val: a)
+            if(not b.contains(val))
+                ret.insert(val);
+
+        return ret;
+    }
+    else
+    {
+        unordered_set<size_t> ret(a);
+        for(size_t val: b)
+            ret.erase(val);
+
+        return ret;
+    }
+}
+
+unordered_set<size_t> operator - (unordered_set<size_t>&& a,
+                                            const unordered_set<size_t>& b)
+{
+    for(auto it = a.begin(); it != a.end();)
+    {
+       if(b.contains(*it))
+          it = a.erase(it);
+       else ++it;
+    }
+
+    return a;
 }

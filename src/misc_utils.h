@@ -17,7 +17,7 @@
 #include <set>
 #include <cctype>
 
-#define LINE_MAX_SIZE 10000
+#define LINE_MAX_SIZE 50000
 
 std::string exec(const char* cmd);
 
@@ -43,6 +43,30 @@ std::unordered_set<std::size_t> get_activated_useflags(std::unordered_map<std::s
 
 const std::vector<std::filesystem::path> &get_profiles_tree();
 
-std::string to_lower(std::string s);
+std::string to_lower(std::string_view sv);
+std::string to_lower(std::string&& sv);
+
+std::string to_upper(std::string_view sv);
+std::string to_upper(std::string&& sv);
+
+std::unordered_set<std::size_t> operator + (const std::unordered_set<std::size_t>& a,
+                                            const std::unordered_set<std::size_t>& b);
+
+std::unordered_set<std::size_t> operator + (std::unordered_set<std::size_t>&& a,
+                                            const std::unordered_set<std::size_t>& b);
+
+std::unordered_set<std::size_t> operator - (const std::unordered_set<std::size_t>& a,
+                                            const std::unordered_set<std::size_t>& b);
+
+std::unordered_set<std::size_t> operator - (std::unordered_set<std::size_t>&& a,
+                                            const std::unordered_set<std::size_t>& b);
+
+std::unordered_set<std::size_t> operator & (const std::unordered_set<std::size_t>& a,
+                                            const std::unordered_set<std::size_t>& b);
+// Interesection
+
+std::unordered_set<std::size_t> operator & (std::unordered_set<std::size_t>&& a,
+                                            const std::unordered_set<std::size_t>& b);
+
 
 #endif // MISC_UTILS_H
