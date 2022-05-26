@@ -51,7 +51,7 @@ public:
         }
     }
 
-    auto find_couple(const Husband &h)
+    auto find_couple(const Husband &h) const
     {
         auto map_it = husband_index.find(h);
         if(map_it != husband_index.end())
@@ -59,7 +59,7 @@ public:
         else return couples.cend();
     }
 
-    auto find_couple(const Wife &w)
+    auto find_couple(const Wife &w) const
     {
         auto map_it = wife_index.find(w);
         if(map_it != wife_index.end())
@@ -67,17 +67,17 @@ public:
         else return couples.cend();
     }
 
-    auto cbegin()
+    auto cbegin() const
     {
         return couples.cbegin();
     }
 
-    auto cend()
+    auto cend() const
     {
         return couples.cend();
     }
 
-    std::size_t size()
+    std::size_t size() const
     {
         return couples.size();
     }
