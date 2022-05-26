@@ -34,10 +34,10 @@ public:
     void parse_deps();
     void parse_metadata();
 
-    void print_flag_states(bool iuse_only = true);
+    void print_status();
 
     FlagState get_flag_state(const size_t &flag_id);
-    const std::unordered_set<size_t> &get_activated_flags();
+    std::unordered_set<size_t> get_active_flags();
 
     bool respects_pkg_dep(const PackageDependency &pkg_dep);
 
@@ -75,11 +75,8 @@ protected:
     Dependencies bdeps, rdeps;
     std::deque<std::string> ebuild_lines;
 
-    std::unordered_set<size_t> iuse_flags;
-    std::unordered_set<size_t> masked_flags, forced_flags;
-    UseflagStates flag_states;
-    std::unordered_set<size_t> activated_flags; /* list of flags that are to be used if this ebuild is to be emerged
-                                                 * this list is to be dynamically updated at each flag assign */
+    std::unordered_set<FlagID> iuse, iuse_effective;
+    std::unordered_set<FlagID> use, use_mask, use_force;
 
     size_t id, pkg_id;
     std::string slot, subslot;

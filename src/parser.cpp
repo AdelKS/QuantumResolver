@@ -338,7 +338,7 @@ UseDependencies Parser::parse_pkg_usedeps(string_view useflags_constraint_str)
     bool done = false;
     while(not done)
     {
-        UseDependency usedep;
+        UseflagDependency usedep;
         next_comma = useflags_constraint_str.find_first_of(',');
 
         if (next_comma != string_view::npos)
@@ -355,7 +355,7 @@ UseDependencies Parser::parse_pkg_usedeps(string_view useflags_constraint_str)
         if(single_constraint.starts_with('!'))
         {
             single_constraint.remove_prefix(1);
-            usedep.type = UseDependency::Type::CONDITIONAL;
+            usedep.type = UseflagDependency::Type::CONDITIONAL;
 
             if(single_constraint.ends_with('?'))
             {
@@ -375,7 +375,7 @@ UseDependencies Parser::parse_pkg_usedeps(string_view useflags_constraint_str)
         }
         else if(single_constraint.ends_with('?'))
         {
-            usedep.type = UseDependency::Type::CONDITIONAL;
+            usedep.type = UseflagDependency::Type::CONDITIONAL;
             single_constraint.remove_suffix(1);
             usedep.cond_dep.forward_if_not_set = false;
             usedep.cond_dep.forward_if_set = true;
@@ -383,7 +383,7 @@ UseDependencies Parser::parse_pkg_usedeps(string_view useflags_constraint_str)
         }
         else if(single_constraint.ends_with('='))
         {
-            usedep.type = UseDependency::Type::CONDITIONAL;
+            usedep.type = UseflagDependency::Type::CONDITIONAL;
             single_constraint.remove_suffix(1);
             usedep.cond_dep.forward_if_not_set = true;
             usedep.cond_dep.forward_if_set = true;
@@ -391,7 +391,7 @@ UseDependencies Parser::parse_pkg_usedeps(string_view useflags_constraint_str)
         }
         else
         {
-            usedep.type = UseDependency::Type::DIRECT;
+            usedep.type = UseflagDependency::Type::DIRECT;
 
             usedep.direct_dep.state = true;
             if(single_constraint.starts_with('-'))
@@ -415,7 +415,7 @@ UseDependencies Parser::parse_pkg_usedeps(string_view useflags_constraint_str)
             single_constraint.remove_suffix(3);
         }
 
-        usedep.id = db->useflags.get_flag_id(single_constraint);
+        usedep.flag_id = db->useflags.get_flag_id(single_constraint);
         use_dependencies.emplace_back(move(usedep));
     }
 

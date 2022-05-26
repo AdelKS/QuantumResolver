@@ -8,10 +8,19 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-    cout << argc << " " << argv << endl;
     try
     {
-        Database database;
+        vector<string> input;
+        for(int i = 0 ; i < argc ; i++)
+            input.push_back(argv[i]);
+
+        if(argc == 3 and input[1] == "status")
+        {
+            Database database;
+            database.repo.print_flag_states(input[2]);
+        }
+//        Database database;
+//        database.repo.print_flag_states("www-client/firefox");
     }
     catch(runtime_error &err)
     {

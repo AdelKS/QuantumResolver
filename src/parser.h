@@ -33,12 +33,12 @@ struct ConditionalUseDependency
     bool forward_reverse_state = false;
 };
 
-struct UseDependency
+struct UseflagDependency
 {
     enum struct Type {DIRECT, CONDITIONAL};
 
     Type type = Type::DIRECT;
-    size_t id = std::numeric_limits<size_t>::max();
+    size_t flag_id = std::numeric_limits<size_t>::max();
 
     DirectUseDependency direct_dep;
     ConditionalUseDependency cond_dep;
@@ -51,7 +51,7 @@ struct PackageConstraint
     SlotConstraint slot;
 };
 
-using UseDependencies = std::vector<UseDependency>;
+using UseDependencies = std::vector<UseflagDependency>;
 
 struct PackageDependency
 {

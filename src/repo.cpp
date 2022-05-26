@@ -19,6 +19,7 @@ Repo::Repo(Database *db) : db(db)
 //    auto start = high_resolution_clock::now();
 
     load_ebuilds("/var/db/repos/gentoo/metadata/md5-cache");
+    load_masked_and_forced_useflags();
 //    load_installed_pkgs();
 //    parse_deps();
 
@@ -186,7 +187,6 @@ const string& Repo::get_pkg_groupname(size_t pkg_id)
 
 void Repo::print_flag_states(const string &package_constraint_str)
 {
-    cout << "We got here!" << endl;
     PackageConstraint pkg_constraint = db->parser.parse_pkg_constraint(package_constraint_str);
     if(pkg_constraint.pkg_id == pkgs.npos)
     {
@@ -195,7 +195,7 @@ void Repo::print_flag_states(const string &package_constraint_str)
     }
 
     for(auto &ebuild_id: pkgs[pkg_constraint.pkg_id].get_matching_ebuilds(pkg_constraint))
-        pkgs[pkg_constraint.pkg_id][ebuild_id].print_flag_states();
+        pkgs[pkg_constraint.pkg_id][ebuild_id].print_status();
 }
 
 void Repo::parse_ebuild_metadata()

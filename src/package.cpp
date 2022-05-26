@@ -92,11 +92,11 @@ void Package::set_installed_version(const std::string &version, const std::strin
     installed_pkg.ebuild_id = ebuilds.id_of(version);
     installed_pkg.activated_useflags = get_activated_useflags(db->parser.parse_useflags(activated_useflags, true));
 
-    if(installed_pkg.ebuild_id != ebuilds.npos and ebuilds[installed_pkg.ebuild_id].get_activated_flags() != installed_pkg.activated_useflags)
+    if(installed_pkg.ebuild_id != ebuilds.npos and ebuilds[installed_pkg.ebuild_id].get_active_flags() != installed_pkg.activated_useflags)
     {
         cout << "Change of flag state for " + pkg_groupname + ": ";
         vector<size_t> sym_diff;
-        set_symmetric_difference(ebuilds[installed_pkg.ebuild_id].get_activated_flags().begin(), ebuilds[installed_pkg.ebuild_id].get_activated_flags().end(),
+        set_symmetric_difference(ebuilds[installed_pkg.ebuild_id].get_active_flags().begin(), ebuilds[installed_pkg.ebuild_id].get_active_flags().end(),
                 installed_pkg.activated_useflags.begin(), installed_pkg.activated_useflags.end(),
                 back_inserter(sym_diff));
         for(const auto &flag_id: sym_diff)

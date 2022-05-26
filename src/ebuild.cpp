@@ -2,7 +2,8 @@
 
 #include "misc_utils.h"
 
-#include "database.h"
+#include "database.cpp"
+#include "useflags.cpp"
 
 using namespace std;
 
@@ -65,8 +66,14 @@ void Ebuild::parse_metadata()
         {
             // shrink by 5 to remove the "IUSE=" in the beginning
             ebuild_line_view.remove_prefix(5);
+
             auto flag_states = db->parser.parse_useflags(ebuild_line_view, false, true);
             add_iuse_flags(flag_states);
+
+            unordered_set<string> use_names;
+            for(size_t flag_id: use)
+                use_names.insert(db->useflags.get_flag_name(flag_id));
+
         }
         else if(ebuild_line_view.starts_with("SLOT"))
         {
@@ -89,7 +96,7 @@ void Ebuild::parse_metadata()
             const auto &keywords = db->parser.parse_keywords(ebuild_line_view);
             for(const auto &[keyword_id, is_testing]: keywords)
             {
-                if(flag_states.contains(keyword_id))
+                if(db->useflags.get_arch_id() == keyword_id)
                 {
                     ebuild_type = is_testing ? EbuildType::TESTING : EbuildType::STABLE;
                     break;
@@ -98,14 +105,26 @@ void Ebuild::parse_metadata()
         }
     }
 
+    iuse_effective = (db->useflags.get_implicit_flags() + iuse);
+
+    use = (db->useflags.get_use() & iuse_effective) + use;
+    use_force = db->useflags.get_use_force() & iuse_effective;
+    use_mask = db->useflags.get_use_mask() & iuse_effective;
+
+    if(ebuild_type == EbuildType::STABLE)
+    {
+        use_force = db->useflags.get_use_stable_force() & iuse_effective;
+        use_mask = db->useflags.get_use_stable_mask() & iuse_effective;
+    }
+
     parsed_metadata = true;
 }
 
 void Ebuild::add_iuse_flag(size_t flag_id, bool default_state)
 {
-    iuse_flags.insert(flag_id);
-    if(not flag_states.contains(flag_id))
-        flag_states[flag_id] = default_state;
+    iuse.insert(flag_id);
+    if(default_state)
+        use.insert(flag_id);
 }
 
 void Ebuild::add_iuse_flags(std::unordered_map<std::size_t, bool> useflags_and_default_states)
@@ -118,38 +137,36 @@ void Ebuild::add_iuse_flags(std::unordered_map<std::size_t, bool> useflags_and_d
 
 void Ebuild::assign_useflag_state(size_t flag_id, bool state, const FlagAssignType &assign_type)
 {
+    parse_metadata();
+
+    if(not iuse_effective.contains(flag_id))
+        return;
+
     if(assign_type == FlagAssignType::DIRECT)
     {
-       flag_states[flag_id] = state;
+        if(state)
+            use.insert(flag_id);
+        else use.erase(flag_id);
     }
     else if(assign_type == FlagAssignType::FORCE or
             (assign_type == FlagAssignType::STABLE_FORCE and ebuild_type == EbuildType::STABLE))
     {
         if(state)
-            forced_flags.insert(flag_id);
-        else forced_flags.erase(flag_id);
+            use_force.insert(flag_id);
+        else use_force.erase(flag_id);
     }
     else if(assign_type == FlagAssignType::MASK or
             (assign_type == FlagAssignType::STABLE_MASK and ebuild_type == EbuildType::STABLE))
     {
         if(state)
-            masked_flags.insert(flag_id);
-        else masked_flags.erase(flag_id);
-    }
-
-    // update activated flags set
-    if(iuse_flags.contains(flag_id))
-    {
-        const auto &flag_state = get_flag_state(flag_id);
-        if(flag_state == FlagState::FORCED or flag_state == FlagState::ON)
-            activated_flags.insert(flag_id);
-        else activated_flags.erase(flag_id); // TODO: UNKNOWN state use flags here are treated as disabled
+            use_mask.insert(flag_id);
+        else use_mask.erase(flag_id);
     }
 }
 
-const std::unordered_set<size_t> &Ebuild::get_activated_flags()
+std::unordered_set<size_t> Ebuild::get_active_flags()
 {
-    return activated_flags;
+    return use + use_force - use_mask;
 }
 
 void Ebuild::assign_useflag_states(const UseflagStates &useflag_states, const FlagAssignType &assign_type)
@@ -351,24 +368,53 @@ Dependencies Ebuild::parse_dep_string(string_view dep_string)
     return deps;
 }
 
-void Ebuild::print_flag_states(bool iuse_only)
+void Ebuild::print_status()
 {
-    if(not parsed_metadata)
-        parse_metadata();
+    parse_metadata();
 
+    unordered_set<string> use_names;
+    for(size_t flag_id: use)
+        use_names.insert(db->useflags.get_flag_name(flag_id));
+
+    cout << "######################################" << endl;
     cout << db->repo.get_pkg_groupname(pkg_id) << "   Version: " << eversion.get_version() << endl;
 
-    cout << "  USE=\" ";
-    for(const auto &[flag_id, flag_state]: flag_states)
-        if(not iuse_only or iuse_flags.contains(flag_id))
-        {
-            if(forced_flags.contains(flag_id))
-                cout << "(+" <<  db->useflags.get_flag_name(flag_id) << ") ";
-            else if(masked_flags.contains(flag_id))
-                cout << "(-" <<  db->useflags.get_flag_name(flag_id) << ") ";
-            else cout << (flag_state ? "" : "-") << db->useflags.get_flag_name(flag_id) << " ";
-        }
+    cout << "  USE=\"";
+    for(const auto& flag_name: db->useflags.to_flag_names((use & iuse) - db->useflags.get_expand_flags()))
+        cout << flag_name << " ";
+    for(const auto& flag_name: db->useflags.to_flag_names(((iuse - use) - db->useflags.get_expand_flags())))
+        cout << '-' << flag_name << " ";
     cout << "\"" << endl;
+
+    auto enabled_expand_flag_ids = use & db->useflags.get_expand_flags();
+    if(not enabled_expand_flag_ids.empty())
+    {
+        map<string, set<string>> enabled_expands;
+        for(FlagID flag_id: enabled_expand_flag_ids)
+        {
+            string flag_name = db->useflags.get_flag_name(flag_id);
+            auto [expand_name, expand_type] = db->useflags.get_use_expand_info(flag_id);
+            if(not expand_type.hidden)
+            {
+                if(not expand_type.unprefixed)
+                {
+                    if(expand_name.size() + 2 >= flag_name.size())
+                        throw runtime_error("Something went wrong");
+                    flag_name = flag_name.substr(expand_name.size()+1);
+                }
+                enabled_expands[std::move(expand_name)].insert(std::move(flag_name));
+            }
+
+        }
+
+        for(const auto& [expand_name, expand_flag_names]: enabled_expands)
+        {
+            cout << "  " << expand_name << "=\"";
+            for(const auto& expand_flag_name: expand_flag_names)
+                cout << expand_flag_name << " ";
+            cout << "\"" << endl;
+        }
+    }
 }
 
 FlagState Ebuild::get_flag_state(const size_t &flag_id)
@@ -376,17 +422,18 @@ FlagState Ebuild::get_flag_state(const size_t &flag_id)
     if(not parsed_deps)
         parse_deps();
 
-    FlagState state = FlagState::UNKNOWN;
+    FlagState state = FlagState::NOT_IN_IUSE_EFFECTIVE;
+    if(not iuse_effective.contains(flag_id))
+        return state;
 
-    if(forced_flags.contains(flag_id))
+    if(use_force.contains(flag_id))
         state = FlagState::FORCED;
-    if(masked_flags.contains(flag_id))
+    if(use_mask.contains(flag_id))
         state = FlagState::MASKED;
-    if(state == FlagState::UNKNOWN)
+
+    if(state == FlagState::NOT_IN_IUSE_EFFECTIVE)
     {
-        const auto &flag_state_it = flag_states.find(flag_id);
-        if(flag_state_it != flag_states.end())
-            state = flag_state_it->second ? FlagState::ON : FlagState::OFF;
+        state = use.contains(flag_id) ? FlagState::ON : FlagState::OFF;
     }
 
     return state;
@@ -397,22 +444,20 @@ bool Ebuild::respects_usestates(const UseDependencies &use_dependencies)
     if(not parsed_deps)
         parse_deps();
 
-    for(const UseDependency &use_dep: use_dependencies)
+    for(const UseflagDependency &use_dep: use_dependencies)
     {
-        if(use_dep.type == UseDependency::Type::CONDITIONAL)
-            throw runtime_error("My programmer made a mistake: Testing against conditional use dependencies, only direct is allowed");
+        if(use_dep.type == UseflagDependency::Type::CONDITIONAL)
+            throw runtime_error("Testing against conditional use dependencies, only direct is allowed");
 
-        const auto &flagstate = get_flag_state(use_dep.id);
-
-        if(flagstate == FlagState::UNKNOWN)
+        if(not iuse_effective.contains(use_dep.flag_id))
         {
             if(use_dep.direct_dep.has_default_if_unexisting and use_dep.direct_dep.state != use_dep.direct_dep.default_if_unexisting)
                 return false;
             else throw runtime_error("In: " + db->repo.get_pkg_groupname(pkg_id) + "  id: " + to_string(id) + "\n" +
-                                     "      Asking for useflag: " + db->useflags.get_flag_name(use_dep.id) + " state but "
+                                     "      Asking for useflag: " + db->useflags.get_flag_name(use_dep.flag_id) + " state but "
                                      " it has not been set and doesn't a fallback default");
         }
-        else if((flagstate == FlagState::ON or flagstate == FlagState::FORCED) != use_dep.direct_dep.state)
+        else if(get_active_flags().contains(use_dep.flag_id) != use_dep.direct_dep.state)
             return false;
     }
 
