@@ -162,8 +162,8 @@ bool operator < (const EbuildVersion &a, const EbuildVersion &b)
      *      */
 
     const size_t min_size = min(a.version_parsing.size(), b.version_parsing.size());
-    const auto res = lexicographical_compare_three_way(a.version_parsing.cbegin(),  a.version_parsing.cbegin() + min_size,
-                                                       b.version_parsing.cbegin(),  b.version_parsing.cbegin() + min_size);
+    const auto res = lexicographical_compare_three_way(a.version_parsing.cbegin(),  a.version_parsing.cbegin() + long(min_size),
+                                                       b.version_parsing.cbegin(),  b.version_parsing.cbegin() + long(min_size));
 
     bool result = res < 0 or (
                             res == 0 and (
@@ -179,8 +179,8 @@ bool operator <= (const EbuildVersion &a, const EbuildVersion &b)
     // returns true if this <= 1.23
 
     const size_t min_size = min(a.version_parsing.size(), b.version_parsing.size());
-    const auto res = lexicographical_compare_three_way(a.version_parsing.cbegin(),  a.version_parsing.cbegin() + min_size,
-                                                       b.version_parsing.cbegin(),  b.version_parsing.cbegin() + min_size);
+    const auto res = lexicographical_compare_three_way(a.version_parsing.cbegin(),  a.version_parsing.cbegin() + long(min_size),
+                                                       b.version_parsing.cbegin(),  b.version_parsing.cbegin() + long(min_size));
 
     bool result = res <= 0 or (
                             res == 0 and (
@@ -229,8 +229,8 @@ bool operator *= (const EbuildVersion &a, const EbuildVersion &b)
         return false;
 
     const size_t min_size = b.version_parsing.size();
-    const auto res = lexicographical_compare_three_way(a.version_parsing.cbegin(),  a.version_parsing.cbegin() + min_size,
-                                                       b.version_parsing.cbegin(),  b.version_parsing.cbegin() + min_size);
+    const auto res = lexicographical_compare_three_way(a.version_parsing.cbegin(),  a.version_parsing.cbegin() + long(min_size),
+                                                       b.version_parsing.cbegin(),  b.version_parsing.cbegin() + long(min_size));
 
     return res == 0;
 
@@ -250,8 +250,8 @@ bool operator ^= (const EbuildVersion &a, const EbuildVersion &b)
     if(size != other_size)
         return false;
 
-    const auto res = lexicographical_compare_three_way(a.version_parsing.cbegin(),  a.version_parsing.cbegin() + size,
-                                                       b.version_parsing.cbegin(),  b.version_parsing.cbegin() + size);
+    const auto res = lexicographical_compare_three_way(a.version_parsing.cbegin(),  a.version_parsing.cbegin() + long(size),
+                                                       b.version_parsing.cbegin(),  b.version_parsing.cbegin() + long(size));
 
     return res == 0;
 
