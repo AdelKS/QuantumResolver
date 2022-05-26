@@ -14,18 +14,115 @@ UseFlags::UseFlags(Database *db) : db(db)
     populate_profile_flags();
 }
 
+void UseFlags::set_arch()
+{
+    const auto& arch_flags = use_expand.keys_from_key<FlagID>(UseExpandName("ARCH"));
+    for(const auto& flag: arch_flags)
+        if(use.contains(flag))
+        {
+            current_arch = flag;
+            current_arch_name = useflags.get_counterpart(current_arch);
+            break;
+        }
+}
+
+FlagInfo UseFlags::get_flag_info(const std::string_view& flag_str) const
+{
+    return get_flag_info(get_flag_id(flag_str));
+}
+
+FlagInfo UseFlags::get_flag_info(FlagID id) const
+{
+    if(id == npos)
+        return FlagInfo();
+    else return FlagInfo {use.contains(id),
+                use_mask.contains(id), use_stable_mask.contains(id),
+                use_force.contains(id), use_stable_force.contains(id)};
+}
+
+FlagID UseFlags::get_arch_id() const
+{
+    return current_arch;
+}
+
+FlagName UseFlags::get_arch_name() const
+{
+    return current_arch_name;
+}
+
+const std::unordered_set<FlagID>& UseFlags::get_implicit_flags() const
+{
+    return implicit_useflags;
+}
+
+const std::unordered_set<FlagID>& UseFlags::get_hidden_flags() const
+{
+    return hidden_useflags;
+}
+
+const std::unordered_set<FlagID>& UseFlags::get_expand_flags() const
+{
+    return expand_useflags;
+}
+
+const std::unordered_set<FlagID>& UseFlags::get_use() const
+{
+    return use;
+}
+
+const std::unordered_set<FlagID>& UseFlags::get_use_force() const
+{
+    return use_force;
+}
+
+const std::unordered_set<FlagID>& UseFlags::get_use_stable_force() const
+{
+    return use_stable_force;
+}
+
+const std::unordered_set<FlagID>& UseFlags::get_use_mask() const
+{
+    return use_mask;
+}
+
+const std::unordered_set<FlagID>& UseFlags::get_use_stable_mask() const
+{
+    return use_stable_mask;
+}
+
 size_t UseFlags::add_flag(const string_view &flag_str)
 {
     auto it = useflags.find_couple(string(flag_str));
     if(it == useflags.cend())
     {
         useflags.add_couple(string(flag_str), useflags.size());
-        return  useflags.size() - 1;
+        FlagID flag_id = useflags.size() - 1;
+
+        size_t underscore_pos = flag_str.find_last_of('_');
+        if(underscore_pos != string_view::npos) // so we catch e.g. l18n_en
+        {
+            string_view prefix = flag_str.substr(0, underscore_pos); // We obtain here L18N
+
+            // See if it corresponds to any use expand name
+            ExpandID expand_id = use_expand.index_from_key(UseExpandName(prefix));
+
+            if(prefix == "L10N")
+                cout << "we here!" << endl;
+
+            if(expand_id != use_expand.npos)
+            {
+                // assign the flag id and string to the expand and mark the flag id as expanded
+                use_expand.assign_key(expand_id, string(flag_str));
+                use_expand.assign_key(expand_id, flag_id);
+                expand_useflags.insert(flag_id);
+            }
+        }
+        return  flag_id;
     }
     return it->second;
 }
 
-size_t UseFlags::get_flag_id(const std::string_view &flag_str)
+size_t UseFlags::get_flag_id(const std::string_view &flag_str) const
 {
     auto it = useflags.find_couple(string(flag_str));
     if(it == useflags.cend())
@@ -35,7 +132,7 @@ size_t UseFlags::get_flag_id(const std::string_view &flag_str)
     return it->second;
 }
 
-std::string UseFlags::get_flag_name(const size_t &id)
+std::string UseFlags::get_flag_name(const size_t &id) const
 {
     auto it = useflags.find_couple(id);
     if(it == useflags.cend())
@@ -45,39 +142,34 @@ std::string UseFlags::get_flag_name(const size_t &id)
     return it->first;
 }
 
-void UseFlags::set_global_useflag(const std::string_view& flag_str)
-{
-    use.insert(add_flag(flag_str));
-}
-
-void UseFlags::unset_global_useflag(const std::string_view& flag_str)
-{
-    use.erase(get_flag_id(flag_str));
-}
-
-void UseFlags::unset_global_useflags()
+void UseFlags::clear_globally_toggled_useflags()
 {
     use.clear();
 }
 
+void UseFlags::clear_iuse_implicit_flags()
+{
+    throw runtime_error("Function not implemented");
+}
+
 void UseFlags::clear_hidden_expands()
 {
-    // TODO : Continue here
+    throw runtime_error("Function not implemented");
 }
 
 void UseFlags::clear_normal_expands()
 {
-    // TODO : Continue here
+    throw runtime_error("Function not implemented");
 }
 
 void UseFlags::clear_implicit_expands()
 {
-    // TODO : Continue here
+    throw runtime_error("Function not implemented");
 }
 
 void UseFlags::clear_unprefixed_expands()
 {
-    // TODO : Continue here
+    throw runtime_error("Function not implemented");
 }
 
 void UseFlags::make_expand_hidden(std::size_t prefix_index, bool hidden)
@@ -92,27 +184,48 @@ void UseFlags::make_expand_implicit(std::size_t prefix_index, bool implicit)
 
 void UseFlags::remove_expand(std::size_t prefix_index)
 {
-    // TODO : Continue here
+    throw runtime_error("Function not implemented");
 }
 
-void UseFlags::handle_use_line(const vector<string_view> &words)
+void UseFlags::handle_use_line(const vector<string_view> &flags)
 {
-    for(string_view value: words)
+    for(string_view flag_str_v: flags)
     {
-        if(value.starts_with('$'))
+        if(flag_str_v.starts_with('$'))
         {
-            cout << "skipping " << value << " in USE var" << endl;
+            cout << "skipping " << flag_str_v << " in USE var" << endl;
             continue;
         }
 
-        if(value == "-*")
-            unset_global_useflags();
-        else if(value.starts_with('-'))
+        if(flag_str_v == "-*")
+            clear_globally_toggled_useflags();
+        else if(flag_str_v.starts_with('-'))
         {
-            value.remove_prefix(1);
-            unset_global_useflag(value);
+            flag_str_v.remove_prefix(1);
+            use.erase(get_flag_id(flag_str_v));
         }
-        else set_global_useflag(value);
+        else use.insert(add_flag(flag_str_v));
+    }
+}
+
+void UseFlags::handle_iuse_implicit_line(const vector<string_view> &flags)
+{
+    for(string_view flag_str_v: flags)
+    {
+        if(flag_str_v.starts_with('$'))
+        {
+            cout << "skipping " << flag_str_v << " in USE var" << endl;
+            continue;
+        }
+
+        if(flag_str_v == "-*")
+            clear_iuse_implicit_flags();
+        else if(flag_str_v.starts_with('-'))
+        {
+            flag_str_v.remove_prefix(1);
+            implicit_useflags.erase(get_flag_id(flag_str_v));
+        }
+        else implicit_useflags.insert(add_flag(flag_str_v));
     }
 }
 
@@ -167,6 +280,23 @@ void UseFlags::handle_use_expand_line(string_view use_expand_type, const vector<
     }
 }
 
+template <std::ranges::common_range Range> requires (std::is_same_v<std::ranges::range_value_t<Range>, size_t>)
+set<string> UseFlags::to_flag_names(const Range& flag_ids)
+{
+    set<string> flag_names;
+    for(size_t flag_id: flag_ids)
+        flag_names.insert(get_flag_name(flag_id));
+    return flag_names;
+}
+
+std::pair<std::string, UseExpandType> UseFlags::get_use_expand_info(FlagID flag_id)
+{
+    assert(use_expand.index_from_key(flag_id) != use_expand.npos);
+
+    // for flags whose id is 'flag_id', that are related to a USE_EXPAND variable, returns this variable
+    return make_pair(use_expand.keys_from_key<UseExpandName>(flag_id).begin()->name, use_expand.object_from_key(flag_id));
+}
+
 void UseFlags::populate_profile_flags()
 {
     const std::vector<std::filesystem::path> &profile_tree = get_profiles_tree();
@@ -185,12 +315,12 @@ void UseFlags::populate_profile_flags()
 
         if(fs::is_regular_file(make_path))
         {
-            cout<< "#############################" << endl;
-            cout << make_path.string() << endl;
-            cout << "+++++++++++++++ START OF FILE CONTENT +++++++++++++++" << endl;
-            for(const auto &line: read_file_lines(make_path))
-                cout << line << endl;
-            cout << "+++++++++++++++ END OF FILE CONTENT +++++++++++++++" << endl;
+//            cout<< "#############################" << endl;
+//            cout << make_path.string() << endl;
+//            cout << "+++++++++++++++ START OF FILE CONTENT +++++++++++++++" << endl;
+//            for(const auto &line: read_file_lines(make_path))
+//                cout << line << endl;
+//            cout << "+++++++++++++++ END OF FILE CONTENT +++++++++++++++" << endl;
 
             for(auto &[var, values_line]: read_vars(make_path))
             {
@@ -214,9 +344,9 @@ void UseFlags::populate_profile_flags()
                         var == "USE_EXPAND_IMPLICIT" or
                         var == "USE_EXPAND" or
                         var == "USE_EXPAND_HIDDEN")
-                {
                     handle_use_expand_line(var, words);
-                }
+                else if(var == "IUSE_IMPLICIT")
+                    handle_iuse_implicit_line(words);
                 else
                 {
                     size_t expand_index = use_expand.npos;
@@ -247,8 +377,17 @@ void UseFlags::populate_profile_flags()
                         size_t flag_id = add_flag(use_flag_str);
                         use_expand.assign_key(expand_index, flag_id);
                         use_expand.assign_key(expand_index, use_flag_str);
+
+                        expand_useflags.insert(flag_id);
+
                         if(not found_use_expand_values)
                             use.insert(flag_id);
+
+                        if(expand_type.implicit)
+                            implicit_useflags.insert(flag_id);
+
+                        if(expand_type.hidden)
+                            hidden_useflags.insert(flag_id);
                     }
 
                 }
@@ -257,23 +396,20 @@ void UseFlags::populate_profile_flags()
         }
     }
 
-    const auto& arch_flags = use_expand.keys_from_key<FlagName>(UseExpandName("ARCH"));
-    // TODO: Set current arch
-
     cout << "Reading global forced and masked flags from profile tree" << endl;
     auto start = high_resolution_clock::now();
 
-    vector<tuple<string, FlagAssignType, unordered_set<size_t>&>> profile_use_files_and_type =
+    vector<tuple<string, unordered_set<size_t>&>> profile_use_files_and_type =
     {
-        {"use.force", FlagAssignType::FORCE, use_force},
-        {"use.stable.force", FlagAssignType::STABLE_FORCE, use_stable_force},
-        {"use.mask", FlagAssignType::MASK, use_mask},
-        {"use.stable.mask", FlagAssignType::STABLE_MASK, use_stable_mask},
+        {"use.force", use_force},
+        {"use.stable.force", use_stable_force},
+        {"use.mask", use_mask},
+        {"use.stable.mask", use_stable_mask},
     };
 
     // Do global useflag overrides first
     for(auto it = profile_tree.rbegin() ; it != profile_tree.rend() ; it++)
-        for(auto &[profile_use_file, use_type, container]: profile_use_files_and_type)
+        for(auto &[profile_use_file, container]: profile_use_files_and_type)
             for(const auto &path: get_regular_files(it->string() + "/" + profile_use_file))
                 for(const auto &[flag_id, state]: db->parser.parse_useflags(read_file_lines(path), true, true))
                 {
@@ -282,32 +418,36 @@ void UseFlags::populate_profile_flags()
                     else container.erase(flag_id);
                 }
 
-// THIS CODE IS TO COMPARE WITH the command `portageq envvar USE`.
-//    string global_useflags_str = exec("portageq envvar USE");
-//    if(global_useflags_str.ends_with('\n'))
-//        global_useflags_str.pop_back();
-
-//    std::set<string> portageeq_use;
-//    string_view global_useflags_view(global_useflags_str);
-//    while(not global_useflags_view.empty())
-//    {
-//        portageeq_use.insert(string(get_next_word(global_useflags_view)));
-//    }
-
-//    std::set<string> use_strs;
-//    for(size_t flag: use)
-//        use_strs.insert(get_flag_name(flag));
-
-//    std::vector<string> diff;
-
-//    std::ranges::set_difference(portageeq_use, use_strs,
-//                        std::back_inserter(diff));
-
-//    cout << "Portage EQ results not included in ours : " << endl;
-//    for(const string& flag: diff)
-//        cout << flag << " ";
-//    cout << endl;
-
     auto end = high_resolution_clock::now();
     cout << "Read use expands and global useflags from profile tree in : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
+}
+
+void UseFlags::compare_with_portage_eq()
+{
+    // THIS CODE IS TO COMPARE WITH the command `portageq envvar USE`.
+    string global_useflags_str = exec("portageq envvar USE");
+    if(global_useflags_str.ends_with('\n'))
+        global_useflags_str.pop_back();
+
+    std::set<string> portageeq_use;
+    string_view global_useflags_view(global_useflags_str);
+    while(not global_useflags_view.empty())
+    {
+        portageeq_use.insert(string(get_next_word(global_useflags_view)));
+    }
+
+    std::set<string> use_strs;
+    for(size_t flag: use)
+        use_strs.insert(get_flag_name(flag));
+
+    std::vector<string> diff;
+
+    std::ranges::set_difference(portageeq_use, use_strs,
+                        std::back_inserter(diff));
+
+    cout << "Portage EQ results not included in ours : " << endl;
+    // these flags are actually only masked and we do not remove them
+    for(const string& flag: diff)
+        cout << flag << " ";
+    cout << endl;
 }
