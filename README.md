@@ -13,14 +13,9 @@ The current main ideas:
 One can query the state of the flags a package would be emerged with, basically this output from `emerge`:
 
 ```shell
-> $ emerge -av ffmpeg
-This action requires superuser access...
-Would you like to add --pretend to options? [Yes/No] Yes
+> $ emerge -qpvO ffmpeg
+[ebuild   R   ] media-video/ffmpeg-4.4.2-r1  USE="X alsa amf bzip2 dav1d encode fdk fontconfig gnutls gpl iconv jpeg2k ladspa libass lzma mp3 network openal opengl opus postproc pulseaudio rubberband sdl speex srt svg theora threads truetype v4l vaapi vdpau vmaf vorbis vpx vulkan webp x264 x265 xvid zlib -amr -amrenc (-appkit) -bluray -bs2b -cdio -chromaprint -chromium -codec2 -cpudetection -cuda -debug -doc -flite -frei0r -fribidi -gcrypt -gme -gmp -gsm -hardcoded-tables -iec61883 -ieee1394 -jack -kvazaar -libaom -libaribb24 -libcaca -libdrm -libilbc -librtmp -libsoxr -libtesseract -libv4l -libxml2 -lv2 (-mipsdspr1) (-mipsdspr2) (-mipsfpu) (-mmal) -modplug -nvenc -opencl -openh264 -openssl -oss -pic -rav1e -samba -snappy -sndio -ssh -static-libs -svt-av1 -test -twolame -verify-sig -vidstab -zeromq -zimg -zvbi" ABI_X86="32 (64) (-x32)" CPU_FLAGS_X86="aes avx avx2 fma3 mmx mmxext sse sse2 sse3 sse4_1 sse4_2 ssse3 -3dnow -3dnowext -fma4 -xop" FFTOOLS="aviocat cws2fws ffescape ffeval ffhash fourcc2pixfmt graph2dot ismindex pktdumper qt-faststart sidxindex trasher"
 
-These are the packages that would be merged, in order:
-
-Calculating dependencies... done!
-[ebuild   R    ] media-video/ffmpeg-4.4.2-r1:0/56.58.58::gentoo-adel  USE="X alsa amf bzip2 dav1d encode fdk fontconfig gnutls gpl iconv jpeg2k ladspa libass lzma mp3 network openal opengl opus postproc pulseaudio rubberband sdl speex srt svg theora threads truetype v4l vaapi vdpau vmaf vorbis vpx vulkan webp x264 x265 xvid zlib -amr -amrenc (-appkit) -bluray -bs2b -cdio -chromaprint -chromium -codec2 -cpudetection -cuda -debug -doc -flite -frei0r -fribidi -gcrypt -gme -gmp -gsm -hardcoded-tables -iec61883 -ieee1394 -jack -kvazaar -libaom -libaribb24 -libcaca -libdrm -libilbc -librtmp -libsoxr -libtesseract -libv4l -libxml2 -lv2 (-mipsdspr1) (-mipsdspr2) (-mipsfpu) (-mmal) -modplug -nvenc -opencl -openh264 -openssl -oss -pic -rav1e -samba -snappy -sndio -ssh -static-libs -svt-av1 -test -twolame -verify-sig -vidstab -zeromq -zimg -zvbi" ABI_X86="32 (64) (-x32)" CPU_FLAGS_X86="aes avx avx2 fma3 mmx mmxext sse sse2 sse3 sse4_1 sse4_2 ssse3 -3dnow -3dnowext -fma4 -xop" FFTOOLS="aviocat cws2fws ffescape ffeval ffhash fourcc2pixfmt graph2dot ismindex pktdumper qt-faststart sidxindex trasher" 0 KiB
 ```
 
 To obtain the same thing with `quantum`:
