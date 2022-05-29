@@ -7,6 +7,19 @@
 
 using namespace std;
 
+// TODO: separate CBUILD from BUILD, for cross compilation, in the future
+const std::unordered_map<std::string, DependencyType> Ebuild::dependency_types =
+{
+    {"BDEPEND", DependencyType::BUILD},
+    {"IDEPEND", DependencyType::BUILD},
+    {"DEPEND", DependencyType::BUILD},
+    {"RDEPEND", DependencyType::BUILD},
+    {"PDEPEND", DependencyType::RUNTIME},
+};
+// DependencyType::RUNTIME here means its intuitive definition from the resolver point of view:
+// "needed so the package can run", but not needed before (during the emerge).
+// DependencyType::BUILD: needed before starting anything on the ebuild
+
 Ebuild::Ebuild(string ver,
                std::filesystem::path ebuild_path,
                Database *db):
@@ -27,25 +40,13 @@ void Ebuild::parse_deps()
 
     for(string_view ebuild_line_view: ebuild_lines)
     {
-        if(ebuild_line_view.starts_with("DEPEND"))
+        for(const auto& [dep_str, dep_type]: dependency_types)
         {
-            ebuild_line_view.remove_prefix(7);
-            add_deps(parse_dep_string(ebuild_line_view), Dependencies::Type::BUILD);
-        }
-        else if(ebuild_line_view.starts_with("BDEPEND"))
-        {
-            ebuild_line_view.remove_prefix(8);
-            add_deps(parse_dep_string(ebuild_line_view), Dependencies::Type::BUILD);
-        }
-        else if(ebuild_line_view.starts_with("RDEPEND"))
-        {
-            ebuild_line_view.remove_prefix(8);
-            add_deps(parse_dep_string(ebuild_line_view), Dependencies::Type::RUNTIME);
-        }
-        else if(ebuild_line_view.starts_with("PDEPEND"))
-        {
-            ebuild_line_view.remove_prefix(8);
-            add_deps(parse_dep_string(ebuild_line_view), Dependencies::Type::RUNTIME);
+            if(ebuild_line_view.starts_with(dep_str))
+            {
+                ebuild_line_view.remove_prefix(dep_str.size() + 1);
+                add_deps(parse_dep_string(ebuild_line_view), dep_type);
+            }
         }
     }
 
@@ -166,6 +167,9 @@ void Ebuild::assign_useflag_state(size_t flag_id, bool state, const FlagAssignTy
 
 std::unordered_set<size_t> Ebuild::get_active_flags()
 {
+    if(not parsed_metadata)
+        parse_metadata();
+
     return use + use_force - use_mask;
 }
 
@@ -208,38 +212,21 @@ const EbuildVersion &Ebuild::get_version()
     return eversion;
 }
 
-void Ebuild::add_deps(const Dependencies &deps, Dependencies::Type dep_type)
+void Ebuild::add_deps(Dependencies deps, DependencyType dep_type)
 {
-    Dependencies &m_deps = dep_type == Dependencies::Type::BUILD ? bdeps : rdeps;
+    Dependencies &m_deps = dep_type == DependencyType::BUILD ? bdeps : rdeps;
 
-    for(const auto &dep: deps.or_deps)
-        m_deps.or_deps.push_back(dep);
+    // or_deps
+    std::move(deps.or_deps.begin(), deps.or_deps.end(), std::back_inserter(m_deps.or_deps));
 
-    for(const auto &dep: deps.plain_deps)
-        m_deps.plain_deps.push_back(dep);
+    // plain_deps
+    std::move(deps.plain_deps.begin(), deps.plain_deps.end(), std::back_inserter(m_deps.plain_deps));
 
-    for(const auto &dep: deps.use_cond_deps)
-        m_deps.use_cond_deps.push_back(dep);
+    // use_cond_deps
+    std::move(deps.use_cond_deps.begin(), deps.use_cond_deps.end(), std::back_inserter(m_deps.use_cond_deps));
 
-    for(const auto &dep: deps.xor_deps)
-        m_deps.xor_deps.push_back(dep);
-}
-
-void Ebuild::add_deps(const Dependencies &&deps, Dependencies::Type dep_type)
-{
-    Dependencies &m_deps = dep_type == Dependencies::Type::BUILD ? bdeps : rdeps;
-
-    for(const auto &dep: deps.or_deps)
-        m_deps.or_deps.emplace_back(move(dep));
-
-    for(const auto &dep: deps.plain_deps)
-        m_deps.plain_deps.emplace_back(move(dep));
-
-    for(const auto &dep: deps.use_cond_deps)
-        m_deps.use_cond_deps.emplace_back(move(dep));
-
-    for(const auto &dep: deps.xor_deps)
-        m_deps.xor_deps.emplace_back(move(dep));
+    //xor_deps
+    std::move(deps.xor_deps.begin(), deps.xor_deps.end(), std::back_inserter(m_deps.xor_deps));
 }
 
 Dependencies Ebuild::parse_dep_string(string_view dep_string)
