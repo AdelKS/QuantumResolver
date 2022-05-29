@@ -18,7 +18,7 @@ struct Dependencies
     bool valid = false;
     std::vector<Dependencies> or_deps, xor_deps, at_most_one_deps, all_of_deps;
     std::vector<PackageDependency> plain_deps;
-    std::vector<std::pair<Toggle, Dependencies>> use_cond_deps;
+    std::vector<std::tuple<FlagID, bool, Dependencies>> use_cond_deps;
 };
 
 class Database;

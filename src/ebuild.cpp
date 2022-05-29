@@ -236,122 +236,94 @@ Dependencies Ebuild::parse_dep_string(string_view dep_string)
      */
 
     Dependencies deps;
-    deps.valid = true;
 
-    string original_string(dep_string);
+    vector<tuple<string, std::vector<Dependencies>&>> pkg_group_dep_map
+    {
+        {"|| (", deps.or_deps},
+        {"^^ (", deps.xor_deps},
+        {"?? (", deps.at_most_one_deps},
+        {"(", deps.all_of_deps}
+    };
 
     skim_spaces_at_the_edges(dep_string);
 
     while(not dep_string.empty())
     {
-        if(dep_string.starts_with("|| ( "))
+        bool found_pkg_group;
+        do
         {
-            // remove till the beginning of the parenthesis
-            dep_string.remove_prefix(3);
-
-            // retrieve the enclosed content and add it to "or" deps
-            const string_view &enclosed_string = get_pth_enclosed_string_view(dep_string);
-            deps.or_deps.emplace_back(parse_dep_string(enclosed_string));
-
-            // move prefix to skip the enclosed content +2 to remove the parentheses
-            dep_string.remove_prefix(enclosed_string.size() + 2);
-        }
-        else if(dep_string.starts_with("^^ ( "))
-        {
-            // remove till the beginning of the parenthesis
-            dep_string.remove_prefix(3);
-
-            // retrieve the enclosed content and add it to "or" deps
-            const string_view &enclosed_string = get_pth_enclosed_string_view(dep_string);
-            deps.xor_deps.emplace_back(parse_dep_string(enclosed_string));
-            if(not deps.xor_deps.back().valid)
+            found_pkg_group = false;
+            for(auto& [pkg_group_string, container]: pkg_group_dep_map)
             {
-                deps.valid = false;
-                return deps;
+                if(dep_string.starts_with(pkg_group_string))
+                {
+                    dep_string.remove_prefix(pkg_group_string.size() - 1);
+
+                    const string_view &enclosed_string = get_pth_enclosed_string_view(dep_string);
+                    Dependencies&& deps = parse_dep_string(enclosed_string);
+                    if(not deps.valid)
+                        return deps;
+
+                    container.emplace_back(std::move(deps));
+
+                    // move prefix to skip the enclosed content +2 to remove the parentheses
+                    dep_string.remove_prefix(enclosed_string.size() + 2);
+
+                    // so always the first character is not a space
+                    skim_spaces_at_the_edges(dep_string);
+
+                    found_pkg_group = true;
+                }
+            }
+        }while(found_pkg_group);
+
+        // it's okay if it returns npos
+        size_t count = dep_string.find_first_of(' ');
+        string_view constraint = dep_string.substr(0, count);
+        dep_string.remove_prefix(constraint.size());
+
+        if(constraint.ends_with('?'))
+        {
+            // This is flag condition
+
+            if(count == string_view::npos)
+                throw runtime_error("Use condition at the end of dep string: " + string(dep_string));
+
+            constraint.remove_suffix(1);
+            bool flag_state = true;
+            if(constraint.starts_with('!'))
+            {
+                constraint.remove_prefix(1);
+                flag_state = false;
             }
 
-            // move prefix to skip the enclosed content +2 to remove the parentheses
-            dep_string.remove_prefix(enclosed_string.size() + 2);
-        }
-        else if(dep_string.starts_with("?? ( "))
-        {
-            // remove till the beginning of the parenthesis
-            dep_string.remove_prefix(3);
-
-            // retrieve the enclosed content and add it to "or" deps
-            const string_view &enclosed_string = get_pth_enclosed_string_view(dep_string);
-            deps.at_most_one_deps.emplace_back(parse_dep_string(enclosed_string));
-            if(not deps.at_most_one_deps.back().valid)
-            {
-                deps.valid = false;
+            FlagID flag_id = db->useflags.get_flag_id(constraint);
+            if(flag_id == db->useflags.npos)
                 return deps;
-            }
 
-            // move prefix to skip the enclosed content +2 to remove the parentheses
-            dep_string.remove_prefix(enclosed_string.size() + 2);
-        }
-        else if(dep_string.starts_with('('))
-        {
-            // it's an all of group
-            const string_view &enclosed_string = get_pth_enclosed_string_view(dep_string);
-            deps.all_of_deps.emplace_back(parse_dep_string(enclosed_string));
+            // retrieve the enclosed content and add it to use_cond_deps
+
+            skim_spaces_at_the_edges(dep_string);
+            const string_view enclosed_string = get_pth_enclosed_string_view(dep_string);
+            Dependencies&& use_cond_deps = parse_dep_string(enclosed_string);
+            if(not use_cond_deps.valid)
+                return deps;
+
+            deps.use_cond_deps.emplace_back(flag_id, flag_state, std::move(use_cond_deps));
 
             // move prefix to skip the enclosed content +2 to remove the parentheses
             dep_string.remove_prefix(enclosed_string.size() + 2);
         }
         else
         {
-            // it's okay if it returns npos
-            size_t count = dep_string.find_first_of(' ');
-            string_view constraint = dep_string.substr(0, count);
-            dep_string.remove_prefix(constraint.size());
-
-            if(constraint.ends_with('?'))
-            {
-                // This is flag condition
-
-                if(count == string_view::npos)
-                    throw runtime_error("Use condition at the end of dep string: " + string(dep_string));
-
-                dep_string.remove_prefix(1);
-                if(not dep_string.starts_with('('))
-                    throw runtime_error("No opening parenthesis after use flag condition in dep string: " + string(dep_string));
-
-                constraint.remove_suffix(1);
-                Toggle flag_cond;
-
-                flag_cond.state = true;
-                if(constraint.starts_with('!'))
-                {
-                    constraint.remove_prefix(1);
-                    flag_cond.state = false;
-                }
-
-                flag_cond.id = db->useflags.get_flag_id(constraint);
-
-                // retrieve the enclosed content and add it to "or" deps
-                const string_view &enclosed_string = get_pth_enclosed_string_view(dep_string);
-                deps.use_cond_deps.emplace_back(make_pair(flag_cond, parse_dep_string(enclosed_string)));
-                if(not deps.use_cond_deps.back().second.valid or deps.use_cond_deps.back().first.id == npos)
-                {
-                    deps.valid = false;
-                    return deps;
-                }
-
-                // move prefix to skip the enclosed content +2 to remove the parentheses
-                dep_string.remove_prefix(enclosed_string.size() + 2);
-            }
-            else
-            {
-                // it is a "plain" (this may be a nested call) pkg constraint
-                const PackageDependency& pkg_dep = db->parser.parse_pkg_dependency(constraint);
-                deps.plain_deps.emplace_back(pkg_dep);
-            }
+            // it is a "plain" (this may be a nested call) pkg constraint
+            deps.plain_deps.push_back(db->parser.parse_pkg_dependency(constraint));
         }
 
         skim_spaces_at_the_edges(dep_string);
     }
 
+    deps.valid = true;
     return deps;
 }
 
@@ -470,5 +442,3 @@ bool Ebuild::respects_pkg_dep(const PackageDependency &pkg_dep)
 
     return result;
 }
-
-
