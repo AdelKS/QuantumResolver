@@ -26,24 +26,25 @@ public:
     Object& object_from_key(const AnyKey& key);
 
     template<class AnyKey> requires (std::is_same_v<AnyKey, KeyType> || ...)
-    std::size_t index_from_key(const AnyKey& key);
+    std::size_t index_from_key(const AnyKey& key) const;
 
     template<class AnyKey> requires (std::is_same_v<AnyKey, KeyType> || ...)
     bool contains_key(const AnyKey& key);
 
     template<class AnyKey> requires (std::is_same_v<AnyKey, KeyType> || ...)
-    const std::unordered_set<AnyKey>& keys_from_index(std::size_t index);
+    const std::unordered_set<AnyKey>& keys_from_index(std::size_t index) const;
 
     template<class AnyKey1, class AnyKey2>
     requires ((std::is_same_v<AnyKey1, KeyType> || ...) and (std::is_same_v<AnyKey2, KeyType> || ...))
-    const std::unordered_set<AnyKey1>& keys_from_key(const AnyKey2& key);
+    const std::unordered_set<AnyKey1>& keys_from_key(const AnyKey2& key) const;
 
     Object& object_from_index(std::size_t index);
+    const Object& const_object_from_index(std::size_t index) const;
 
-    std::size_t objects_count();
+    std::size_t objects_count() const;
 
     template<class AnyKey> requires (std::is_same_v<AnyKey, KeyType> || ...)
-    std::size_t keys_count();
+    std::size_t keys_count() const;
 
     static constexpr std::size_t npos = std::numeric_limits<std::size_t>::max();
 
@@ -84,7 +85,7 @@ constexpr std::size_t MultiKeyMap<Object, KeyType...>::index_of_type()
 
 template <class Object, class... KeyType> requires (sizeof...(KeyType) > 0)
 template <class AnyKey> requires (std::is_same_v<AnyKey, KeyType> || ...)
-std::size_t MultiKeyMap<Object, KeyType...>::index_from_key(const AnyKey& key)
+std::size_t MultiKeyMap<Object, KeyType...>::index_from_key(const AnyKey& key) const
 {
     const auto &map = std::get<index_of_type<AnyKey>()>(maps);
     const auto &it = map.find(key);
@@ -96,27 +97,27 @@ std::size_t MultiKeyMap<Object, KeyType...>::index_from_key(const AnyKey& key)
 template <class Object, class... KeyType> requires (sizeof...(KeyType) > 0)
 template<class AnyKey1, class AnyKey2>
 requires ((std::is_same_v<AnyKey1, KeyType> || ...) and (std::is_same_v<AnyKey2, KeyType> || ...))
-const std::unordered_set<AnyKey1>& MultiKeyMap<Object, KeyType...>::keys_from_key(const AnyKey2 &key)
+const std::unordered_set<AnyKey1>& MultiKeyMap<Object, KeyType...>::keys_from_key(const AnyKey2 &key) const
 {
     std::size_t index = index_from_key(key);
 
     assert(index != npos);
 
-    return std::get<index_of_type<AnyKey1>()>(rev_maps)[index];
+    return std::get<index_of_type<AnyKey1>()>(rev_maps).at(index);
 }
 
 template <class Object, class... KeyType> requires (sizeof...(KeyType) > 0)
 template <class AnyKey> requires (std::is_same_v<AnyKey, KeyType> || ...)
-const std::unordered_set<AnyKey>& MultiKeyMap<Object, KeyType...>::keys_from_index(std::size_t index)
+const std::unordered_set<AnyKey>& MultiKeyMap<Object, KeyType...>::keys_from_index(std::size_t index) const
 {
-    return std::get<index_of_type<AnyKey>()>(rev_maps)[index];
+    return std::get<index_of_type<AnyKey>()>(rev_maps).at(index);
 }
 
 template <class Object, class... KeyType> requires (sizeof...(KeyType) > 0)
 template <class AnyKey> requires (std::is_same_v<AnyKey, KeyType> || ...)
 Object& MultiKeyMap<Object, KeyType...>::object_from_key(const AnyKey& key)
 {
-    std::size_t object_index = index_from_key(key);
+    constexpr std::size_t object_index = index_from_key(key);
 
     assert(object_index != npos);
 
@@ -140,7 +141,7 @@ template <class Object, class... KeyType> requires (sizeof...(KeyType) > 0)
 template<class AnyKey> requires (std::is_same_v<AnyKey, KeyType> || ...)
 bool MultiKeyMap<Object, KeyType...>::contains_key(const AnyKey& key)
 {
-    std::size_t object_index = index_from_key(key);
+    constexpr std::size_t object_index = index_from_key(key);
 
     return object_index != npos;
 }
@@ -153,14 +154,21 @@ Object& MultiKeyMap<Object, KeyType...>::object_from_index(std::size_t index)
 }
 
 template <class Object, class... KeyType> requires (sizeof...(KeyType) > 0)
+const Object& MultiKeyMap<Object, KeyType...>::const_object_from_index(std::size_t index) const
+{
+    assert(index < container.size());
+    return container.at(index);
+}
+
+template <class Object, class... KeyType> requires (sizeof...(KeyType) > 0)
 template<class AnyKey> requires (std::is_same_v<AnyKey, KeyType> || ...)
-std::size_t MultiKeyMap<Object, KeyType...>::keys_count()
+std::size_t MultiKeyMap<Object, KeyType...>::keys_count() const
 {
     return std::get<index_of_type<AnyKey>()>(maps).size();
 }
 
 template <class Object, class... KeyType> requires (sizeof...(KeyType) > 0)
-std::size_t MultiKeyMap<Object, KeyType...>::objects_count()
+std::size_t MultiKeyMap<Object, KeyType...>::objects_count() const
 {
     return container.size();
 }
