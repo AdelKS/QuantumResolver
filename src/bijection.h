@@ -1,89 +1,72 @@
 #pragma once
 
+#include <iterator>
 #include <type_traits>
 #include <utility>
 #include <vector>
 #include <unordered_map>
 
+#include "concepts.h"
+
 template <class Husband, class Wife> requires (! std::is_same_v<Husband, Wife>)
 class Bijection
 {
 public:
-    void add_couple(const Husband &h, const Wife &w)
+    void add_couple(Husband h, Wife w)
     {
         husband_index[h] = couples.size();
         wife_index[w] = couples.size();
 
-        couples.emplace_back(make_pair(h, w));
+        couples.emplace_back(std::move(h), std::move(w));
     }
 
-    void emplace_couple(Husband &&h, Wife &&w)
+    template <class Member> requires (is_any_of<Member, Wife, Husband>)
+    auto& get_counterpart(const Member &m)
     {
-        husband_index[h] = couples.size();
-        wife_index[w] = couples.size();
-
-        couples.emplace_back(make_pair(std::forward(h), std::forward(w)));
-    }
-
-    Wife& get_counterpart(const Husband &h)
-    {
-        // Searchs for counterpart
-        auto map_it = husband_index.find(h);
-        if(map_it != husband_index.end())
-            return couples[map_it->second].second;
-        else
+        // Searches for counterpart
+        auto couple_it = find_couple(m);
+        if(couple_it == couples.end())
         {
-            add_couple(h, Wife());
-            return couples.back().second;
+            if constexpr (std::is_same_v<Member, Husband>)
+                add_couple(m, Wife());
+            else add_couple(Husband(), m);
+            couple_it = --couples.end();
         }
+
+        if constexpr (std::is_same_v<Member, Husband>)
+            return couple_it->second;
+        else return couple_it->first;
     }
 
-    Husband& get_counterpart(const Wife &w)
+    template <class Member> requires (is_any_of<Member, Wife, Husband>)
+    auto find_couple(const Member &m) const
     {
-        // Searchs for counterpart
-        auto map_it = wife_index.find(w);
-        if(map_it != wife_index.end())
-            return couples[map_it->second].first;
-        else
+        auto map_it = get_map<Member>().find(m);
+        if(map_it != get_map<Member>().end())
         {
-            add_couple(Husband(), w);
-            return couples.back().first;
+            auto couple_it = couples.begin();
+            std::advance(couple_it, map_it->second);
+            return couple_it;
         }
+        else return couples.end();
     }
 
-    auto find_couple(const Husband &h) const
-    {
-        auto map_it = husband_index.find(h);
-        if(map_it != husband_index.end())
-            return couples.cbegin() + map_it->second;
-        else return couples.cend();
-    }
+    auto cbegin() const { return couples.cbegin(); }
 
-    auto find_couple(const Wife &w) const
-    {
-        auto map_it = wife_index.find(w);
-        if(map_it != wife_index.end())
-            return couples.cbegin() + map_it->second;
-        else return couples.cend();
-    }
+    auto cend() const { return couples.cend(); }
 
-    auto cbegin() const
-    {
-        return couples.cbegin();
-    }
-
-    auto cend() const
-    {
-        return couples.cend();
-    }
-
-    std::size_t size() const
-    {
-        return couples.size();
-    }
+    std::size_t size() const { return couples.size(); }
 
 protected:
+    template <class Member> requires (is_any_of<Member, Wife, Husband>)
+    auto& get_map() const
+    {
+        if constexpr (std::is_same_v<Member, Husband>)
+            return husband_index;
+        else return wife_index;
+    }
+
     std::vector<std::pair<Husband, Wife>> couples;
-    std::unordered_map<Husband, std::size_t> husband_index;
-    std::unordered_map<Wife, std::size_t> wife_index;
+    std::unordered_map<Husband, size_t> husband_index;
+    std::unordered_map<Wife, size_t> wife_index;
 };
