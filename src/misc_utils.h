@@ -58,11 +58,18 @@ std::string to_lower(std::string&& sv);
 std::string to_upper(std::string_view sv);
 std::string to_upper(std::string&& sv);
 
+// Set union
+
 std::unordered_set<std::size_t> operator + (const std::unordered_set<std::size_t>& a,
                                             const std::unordered_set<std::size_t>& b);
 
 std::unordered_set<std::size_t> operator + (std::unordered_set<std::size_t>&& a,
                                             const std::unordered_set<std::size_t>& b);
+
+std::unordered_set<std::size_t>& operator += (std::unordered_set<std::size_t>& a,
+                                            const std::unordered_set<std::size_t>& b);
+
+// Set difference
 
 std::unordered_set<std::size_t> operator - (const std::unordered_set<std::size_t>& a,
                                             const std::unordered_set<std::size_t>& b);
@@ -70,11 +77,21 @@ std::unordered_set<std::size_t> operator - (const std::unordered_set<std::size_t
 std::unordered_set<std::size_t> operator - (std::unordered_set<std::size_t>&& a,
                                             const std::unordered_set<std::size_t>& b);
 
-std::unordered_set<std::size_t> operator & (const std::unordered_set<std::size_t>& a,
-                                            const std::unordered_set<std::size_t>& b);
 // Interesection
 
+std::unordered_set<std::size_t> operator & (const std::unordered_set<std::size_t>& a,
+                                            const std::unordered_set<std::size_t>& b);
+
+
 std::unordered_set<std::size_t> operator & (std::unordered_set<std::size_t>&& a,
+                                            const std::unordered_set<std::size_t>& b);
+
+std::unordered_set<std::size_t>& operator &= (std::unordered_set<std::size_t>& a,
+                                            const std::unordered_set<std::size_t>& b);
+
+// Symmetric difference
+
+std::unordered_set<std::size_t> operator ^ (const std::unordered_set<std::size_t>& a,
                                             const std::unordered_set<std::size_t>& b);
 
 

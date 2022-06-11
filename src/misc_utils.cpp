@@ -397,6 +397,13 @@ unordered_set<size_t> operator + (unordered_set<size_t>&& a,
     return a;
 }
 
+std::unordered_set<std::size_t>& operator += (std::unordered_set<std::size_t>& a,
+                                            const std::unordered_set<std::size_t>& b)
+{
+    a.insert(b.begin(), b.end());
+    return a;
+}
+
 unordered_set<size_t> operator & (const unordered_set<size_t>& a,
                                             const unordered_set<size_t>& b)
 {
@@ -421,6 +428,18 @@ unordered_set<size_t> operator & (unordered_set<size_t>&& a,
        else ++it;
     }
 
+    return a;
+}
+
+std::unordered_set<size_t>& operator &=(std::unordered_set<std::size_t>& a,
+                                            const std::unordered_set<std::size_t>& b)
+{
+    for(auto it = a.begin(); it != a.end();)
+    {
+       if(not b.contains(*it))
+          it = a.erase(it);
+       else ++it;
+    }
     return a;
 }
 
@@ -457,4 +476,11 @@ unordered_set<size_t> operator - (unordered_set<size_t>&& a,
     }
 
     return a;
+}
+
+
+std::unordered_set<std::size_t> operator ^ (const std::unordered_set<std::size_t>& a,
+                                            const std::unordered_set<std::size_t>& b)
+{
+    return (a - b) + (b - a);
 }
