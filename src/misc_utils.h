@@ -10,6 +10,7 @@
 #include <string>
 #include <array>
 #include <filesystem>
+#include <vector>
 #include <deque>
 #include <string_view>
 #include <unordered_map>
@@ -27,11 +28,19 @@ void skim_spaces_at_the_edges(std::string_view &str);
 
 std::string_view get_pth_enclosed_string_view(const std::string_view &str_view);
 
-std::deque<std::string> read_file_lines(const std::filesystem::path file_path);
+std::vector<std::string> read_file_lines(const std::filesystem::path& file_path);
 
-std::deque<std::pair<std::string, std::string>> read_vars(const std::filesystem::path file_path);
+std::unordered_map<std::string, std::string> read_quoted_vars(const std::filesystem::path& file_path,
+                                                                  const std::vector<std::string>& start_with_list);
 
-std::deque<std::filesystem::path> get_regular_files(const std::filesystem::path &path);
+std::unordered_map<std::string, std::string> read_unquoted_vars(const std::filesystem::path& file_path,
+                                                                  const std::vector<std::string>& start_with_list);
+
+std::vector<std::pair<std::string, std::string>> read_quoted_vars(const std::filesystem::path& file_path);
+
+std::vector<std::pair<std::string, std::string>> read_unquoted_vars(const std::filesystem::path& file_path);
+
+std::vector<std::filesystem::path> get_regular_files(const std::filesystem::path &path);
 
 std::string_view get_next_word(std::string_view &words_line);
 
