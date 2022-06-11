@@ -5,6 +5,7 @@
 #include "bijection.h"
 #include "multikey_map.h"
 #include "misc_utils.h"
+#include "concepts.h"
 
 #include <unordered_set>
 #include <unordered_map>
@@ -13,12 +14,13 @@
 #include <string_view>
 #include <limits>
 #include <ranges>
+#include <map>
 
 using ExpandID = std::size_t;
 using FlagID = std::size_t;
 using FlagName = std::string;
 
-enum struct FlagAssignType {DIRECT, MASK, STABLE_MASK, FORCE, STABLE_FORCE};
+enum struct FlagAssignType {DIRECT, STABLE_DIRECT, MASK, STABLE_MASK, FORCE, STABLE_FORCE};
 
 class Database;
 
@@ -34,7 +36,7 @@ struct UseExpandName
     UseExpandName() {}
     explicit UseExpandName(std::string str) : name(to_upper(std::move(str))) {}
     explicit UseExpandName(const std::string_view& str_view) : name(to_upper(str_view)) {}
-    explicit UseExpandName(const char* c_str) : name(to_upper(string_view(c_str))) {}
+    explicit UseExpandName(const char* c_str) : name(to_upper(std::string_view(c_str))) {}
 
     bool operator == (const UseExpandName& other) const
     {
@@ -68,12 +70,38 @@ public:
 
     FlagID add_flag(const std::string_view &flag_str);
     FlagID get_flag_id(const std::string_view &flag_str) const;
-    FlagName get_flag_name(const size_t &id) const;
+    const FlagName& get_flag_name(const std::size_t &id) const;
 
-    template <std::ranges::common_range Range> requires (std::is_same_v<std::ranges::range_value_t<Range>, size_t>)
-    std::set<std::string> to_flag_names(const Range& flag_ids);
+    template <IntegerRange Range>
+    std::map<std::string, FlagID> to_flag_names(const Range& flag_ids) const
+    {
+        std::map<std::string, FlagID> names_to_ids;
+        for(std::size_t flag_id: flag_ids)
+            names_to_ids.emplace(get_flag_name(flag_id), flag_id);
+        return names_to_ids;
+    }
 
-    std::pair<std::string, UseExpandType> get_use_expand_info(FlagID flag_id);
+    template <IntegerRange Range>
+    std::unordered_map<ExpandID, std::unordered_set<FlagID>>
+    filter_expanded_flags(const Range& flag_ids) const
+    {
+        /// @brief separate flag_ids into groups that belong to the same use expand
+
+        std::unordered_map<ExpandID, std::unordered_set<FlagID>> filtering;
+        for(FlagID flag_id: flag_ids)
+        {
+            ExpandID expand_id = use_expand.index_from_key(flag_id);
+            if(expand_id != use_expand.npos)
+                filtering[expand_id].insert(flag_id);
+        }
+        return filtering;
+    }
+
+    std::string get_expand_name_from_flag_id(FlagID flag_id) const;
+    UseExpandType get_expand_type_from_flag_id(FlagID flag_id) const;
+
+    std::string get_expand_name_from_expand_id(ExpandID expand_id) const;
+    UseExpandType get_expand_type_from_expand_id(ExpandID expand_id) const;
 
     FlagInfo get_flag_info(const std::string_view &flag_str) const;
     FlagInfo get_flag_info(FlagID id) const;
@@ -110,9 +138,9 @@ protected:
     void make_expand_implicit(std::size_t prefix_index, bool implicit);
     void remove_expand(std::size_t prefix_index);
 
-    void handle_use_line(const vector<string_view>& flags);
-    void handle_iuse_implicit_line(const vector<string_view> &flags);
-    void handle_use_expand_line(string_view use_expand_type, const vector<string_view>& words);
+    void handle_use_line(const std::vector<std::string_view>& flags);
+    void handle_iuse_implicit_line(const std::vector<std::string_view> &flags);
+    void handle_use_expand_line(std::string_view use_expand_type, const std::vector<std::string_view>& words);
 
     void compare_with_portage_eq();
 

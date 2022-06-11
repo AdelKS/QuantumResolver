@@ -4,9 +4,10 @@
 
 #include <filesystem>
 #include <chrono>
+#include <string_view>
 
 using namespace std::chrono;
-namespace fs = filesystem;
+namespace fs = std::filesystem;
 using namespace std;
 
 UseFlags::UseFlags(Database *db) : db(db)
@@ -106,9 +107,6 @@ size_t UseFlags::add_flag(const string_view &flag_str)
             // See if it corresponds to any use expand name
             ExpandID expand_id = use_expand.index_from_key(UseExpandName(prefix));
 
-            if(prefix == "L10N")
-                cout << "we here!" << endl;
-
             if(expand_id != use_expand.npos)
             {
                 // assign the flag id and string to the expand and mark the flag id as expanded
@@ -132,13 +130,12 @@ size_t UseFlags::get_flag_id(const std::string_view &flag_str) const
     return it->second;
 }
 
-std::string UseFlags::get_flag_name(const size_t &id) const
+const std::string& UseFlags::get_flag_name(const size_t &id) const
 {
     auto it = useflags.find_couple(id);
     if(it == useflags.cend())
-    {
-        return "";
-    }
+        throw runtime_error(fmt::format("flag ID {} doesn't exist", id));
+
     return it->first;
 }
 
@@ -280,120 +277,132 @@ void UseFlags::handle_use_expand_line(string_view use_expand_type, const vector<
     }
 }
 
-template <std::ranges::common_range Range> requires (std::is_same_v<std::ranges::range_value_t<Range>, size_t>)
-set<string> UseFlags::to_flag_names(const Range& flag_ids)
+std::string UseFlags::get_expand_name_from_flag_id(FlagID flag_id) const
 {
-    set<string> flag_names;
-    for(size_t flag_id: flag_ids)
-        flag_names.insert(get_flag_name(flag_id));
-    return flag_names;
+    ExpandID expand_id = use_expand.index_from_key(flag_id);
+    return get_expand_name_from_expand_id(expand_id);
 }
 
-std::pair<std::string, UseExpandType> UseFlags::get_use_expand_info(FlagID flag_id)
+UseExpandType UseFlags::get_expand_type_from_flag_id(FlagID flag_id) const
 {
-    assert(use_expand.index_from_key(flag_id) != use_expand.npos);
+    ExpandID expand_id = use_expand.index_from_key(flag_id);
+    return get_expand_type_from_expand_id(expand_id);
+}
 
-    // for flags whose id is 'flag_id', that are related to a USE_EXPAND variable, returns this variable
-    return make_pair(use_expand.keys_from_key<UseExpandName>(flag_id).begin()->name, use_expand.object_from_key(flag_id));
+std::string UseFlags::get_expand_name_from_expand_id(ExpandID expand_id) const
+{
+    if(use_expand.objects_count() <= expand_id)
+        throw runtime_error(fmt::format("Expand ID {} does not exist", expand_id));
+
+    return use_expand.keys_from_index<UseExpandName>(expand_id).begin()->name;
+}
+
+UseExpandType UseFlags::get_expand_type_from_expand_id(ExpandID expand_id) const
+{
+    if(use_expand.objects_count() <= expand_id)
+        throw runtime_error(fmt::format("Expand ID {} does not exist", expand_id));
+
+    return use_expand.const_object_from_index(expand_id);
 }
 
 void UseFlags::populate_profile_flags()
 {
-    const std::vector<std::filesystem::path> &profile_tree = get_profiles_tree();
 
-    for(auto it = profile_tree.rbegin() ; it != profile_tree.rend() ; it++)
+    for(const auto& profile_path : flatenned_profiles_tree)
     {
+        const string profile_path_str = profile_path.string();
         fs::path make_path;
-        if(fs::is_regular_file(it->string() + "/make.defaults"))
-            make_path = fs::path(it->string() + "/make.defaults");
-        if(fs::is_regular_file(it->string() + "/make.conf"))
+        if(fs::is_regular_file(profile_path_str + "/make.defaults"))
+            make_path = fs::path(profile_path_str + "/make.defaults");
+        if(fs::is_regular_file(profile_path_str + "/make.conf"))
         {
             if(not make_path.empty())
-                throw std::logic_error("Found both a make.defaults and a make.conf in profile folder: " + it->string());
-            make_path = fs::path(it->string() + "/make.conf");
+                throw std::logic_error("Found both a make.defaults and a make.conf in profile folder: " + profile_path_str);
+            make_path = fs::path(profile_path_str + "/make.conf");
         }
 
-        if(fs::is_regular_file(make_path))
-        {
-//            cout<< "#############################" << endl;
-//            cout << make_path.string() << endl;
-//            cout << "+++++++++++++++ START OF FILE CONTENT +++++++++++++++" << endl;
-//            for(const auto &line: read_file_lines(make_path))
-//                cout << line << endl;
-//            cout << "+++++++++++++++ END OF FILE CONTENT +++++++++++++++" << endl;
+        if(not fs::is_regular_file(make_path))
+            continue;
 
-            for(auto &[var, values_line]: read_vars(make_path))
+//        cout<< "#############################" << endl;
+//        cout << make_path.string() << endl;
+//        cout << "+++++++++++++++ START OF FILE CONTENT +++++++++++++++" << endl;
+//        for(const auto &line: read_file_lines(make_path))
+//            cout << line << endl;
+//        cout << "+++++++++++++++ END OF FILE CONTENT +++++++++++++++" << endl;
+
+        for(auto& [var, values_line]: read_quoted_vars(make_path))
+        {
+            vector<string_view> words;
             {
-                vector<string_view> words;
-                {
 //                    cout << "------------" << endl;
 //                    cout << "Variable: " << var << endl;
 //                    cout << "Values: " << endl;
-                    string_view values_line_view(values_line);
-                    while(not values_line_view.empty())
-                    {
-                        words.push_back(get_next_word(values_line_view));
+                string_view values_line_view(values_line);
+                while(not values_line_view.empty())
+                {
+                    words.push_back(get_next_word(values_line_view));
 //                        cout << words.back() << " ; ";
-                    }
+                }
 //                    cout << endl;
+            }
+
+            if(var == "USE")
+                handle_use_line(words);
+            else if(var == "USE_EXPAND_UNPREFIXED" or
+                    var == "USE_EXPAND_IMPLICIT" or
+                    var == "USE_EXPAND" or
+                    var == "USE_EXPAND_HIDDEN")
+                handle_use_expand_line(var, words);
+            else if(var == "IUSE_IMPLICIT")
+                handle_iuse_implicit_line(words);
+            else
+            {
+                size_t expand_index = use_expand.npos;
+                bool found_use_expand_values = var.starts_with("USE_EXPAND_VALUES_");
+                if(found_use_expand_values)
+                    var = var.substr(string("USE_EXPAND_VALUES_").size());
+
+                expand_index = use_expand.index_from_key(UseExpandName(var));
+
+                if(expand_index == use_expand.npos)
+                {
+                    if(found_use_expand_values)
+                        throw runtime_error("Found USE_EXPAND_VALUES_" + var + " without prior definition of " + var);
+                    continue;
                 }
 
-                if(var == "USE")
-                    handle_use_line(words);
-                else if(var == "USE_EXPAND_UNPREFIXED" or
-                        var == "USE_EXPAND_IMPLICIT" or
-                        var == "USE_EXPAND" or
-                        var == "USE_EXPAND_HIDDEN")
-                    handle_use_expand_line(var, words);
-                else if(var == "IUSE_IMPLICIT")
-                    handle_iuse_implicit_line(words);
-                else
+                const UseExpandType expand_type = use_expand.object_from_index(expand_index);
+                for(string_view& use_expand_flag_tail: words)
                 {
-                    size_t expand_index = use_expand.npos;
-                    bool found_use_expand_values = var.starts_with("USE_EXPAND_VALUES_");
-                    if(found_use_expand_values)
-                        var = var.substr(string("USE_EXPAND_VALUES_").size());
+                    if(use_expand_flag_tail.starts_with('-'))
+                        throw runtime_error("Wrongly using " + var + " as incremental variable as it contains " + string(use_expand_flag_tail));
 
-                    expand_index = use_expand.index_from_key(UseExpandName(var));
+                    string use_flag_str;
+                    if(expand_type.unprefixed)
+                        use_flag_str = use_expand_flag_tail;
+                    else use_flag_str = to_lower(var) + "_" + string(use_expand_flag_tail);
 
-                    if(expand_index == use_expand.npos)
-                    {
-                        if(found_use_expand_values)
-                            throw runtime_error("Found USE_EXPAND_VALUES_" + var + " without prior definition of " + var);
-                        continue;
-                    }
+                    size_t flag_id = add_flag(use_flag_str);
+                    use_expand.assign_key(expand_index, flag_id);
+                    use_expand.assign_key(expand_index, use_flag_str);
 
-                    const UseExpandType expand_type = use_expand.object_from_index(expand_index);
-                    for(string_view& use_expand_flag_tail: words)
-                    {
-                        if(use_expand_flag_tail.starts_with('-'))
-                            throw runtime_error("Wrongly using " + var + " as incremental variable as it contains " + string(use_expand_flag_tail));
+                    expand_useflags.insert(flag_id);
 
-                        string use_flag_str;
-                        if(expand_type.unprefixed)
-                            use_flag_str = use_expand_flag_tail;
-                        else use_flag_str = to_lower(var) + "_" + string(use_expand_flag_tail);
+                    if(not found_use_expand_values)
+                        use.insert(flag_id);
 
-                        size_t flag_id = add_flag(use_flag_str);
-                        use_expand.assign_key(expand_index, flag_id);
-                        use_expand.assign_key(expand_index, use_flag_str);
+                    if(expand_type.implicit)
+                        implicit_useflags.insert(flag_id);
 
-                        expand_useflags.insert(flag_id);
-
-                        if(not found_use_expand_values)
-                            use.insert(flag_id);
-
-                        if(expand_type.implicit)
-                            implicit_useflags.insert(flag_id);
-
-                        if(expand_type.hidden)
-                            hidden_useflags.insert(flag_id);
-                    }
-
+                    if(expand_type.hidden)
+                        hidden_useflags.insert(flag_id);
                 }
 
             }
+
         }
+
     }
 
     cout << "Reading global forced and masked flags from profile tree" << endl;
@@ -408,9 +417,9 @@ void UseFlags::populate_profile_flags()
     };
 
     // Do global useflag overrides first
-    for(auto it = profile_tree.rbegin() ; it != profile_tree.rend() ; it++)
+    for(const auto& profile_path : flatenned_profiles_tree)
         for(auto &[profile_use_file, container]: profile_use_files_and_type)
-            for(const auto &path: get_regular_files(it->string() + "/" + profile_use_file))
+            for(const auto &path: get_regular_files(profile_path.string() + "/" + profile_use_file))
                 for(const auto &[flag_id, state]: db->parser.parse_useflags(read_file_lines(path), true, true))
                 {
                     if(state)

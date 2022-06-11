@@ -7,7 +7,7 @@ using namespace std;
 Parser::Parser(Database *db) : db(db)
 {}
 
-UseflagStates Parser::parse_useflags(const std::deque<std::string> &useflag_lines, bool default_state, bool create_flag_ids)
+UseflagStates Parser::parse_useflags(const vector<string> &useflag_lines, bool default_state, bool create_flag_ids)
 {
     UseflagStates useflag_states;
     for(const string &string: useflag_lines)
@@ -20,7 +20,7 @@ UseflagStates Parser::parse_useflags(const std::deque<std::string> &useflag_line
     return useflag_states;
 }
 
-UseflagStates Parser::parse_keywords(const std::string_view &keywords_str)
+UseflagStates Parser::parse_keywords(const string_view &keywords_str)
 {
     /* Parses the keywords from a KEYWORDS="..." string
      * e.g. it can receive "~keyword1 keyword2 keyword3" as an input
@@ -80,6 +80,7 @@ UseflagStates Parser::parse_useflags(const string_view &useflags_str, bool defau
 {
     /* Parses the use flag state toggles from a string
      * e.g. it can receive "-flag1 flag2 +flag3" as an input
+     * default_state gives the state when it's simply 'flag' (not '+flag' nor '-flag')
      * returns a map between the flag id and its state, true if +flag or flag, false if -flag.
      * */
 
@@ -176,7 +177,7 @@ PkgUseToggles Parser::parse_pkguse_line(string_view pkguse_line)
     return make_pair(pkg_constraint, flag_states);
 }
 
-PackageDependency Parser::parse_pkg_dependency(std::string_view pkg_dep_str)
+PackageDependency Parser::parse_pkg_dependency(string_view pkg_dep_str)
 {
     string_view str(pkg_dep_str);
 
@@ -216,7 +217,7 @@ PackageDependency Parser::parse_pkg_dependency(std::string_view pkg_dep_str)
     return pkg_dependency;
 }
 
-PackageConstraint Parser::parse_pkg_constraint(std::string_view pkg_constraint_str)
+PackageConstraint Parser::parse_pkg_constraint(string_view pkg_constraint_str)
 {
     /* Parses package constraint strings
      * e.g. "=app-misc/foo-1.2.3*:0=[-flag1(-),!flag2?,flag3]

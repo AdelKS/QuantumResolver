@@ -10,12 +10,11 @@ namespace fs = filesystem;
 
 Package::Package(const std::string &pkg_group_name,
                  Database *db):
-     pkg_groupname(pkg_group_name), pkg_id(-1), db(db), ebuilds(), installed_pkg()
+     pkg_groupname(pkg_group_name), db(db)
 {
-
 }
 
-const vector<size_t> Package::get_matching_ebuilds(const PackageConstraint &constraint)
+vector<size_t> Package::get_matching_ebuild_ids(const PackageConstraint &constraint)
 {
     vector<size_t> matching_ebuilds;
 
@@ -25,10 +24,13 @@ const vector<size_t> Package::get_matching_ebuilds(const PackageConstraint &cons
             matching_ebuilds.push_back(ebuild.get_id());
     }
 
+    std::ranges::sort(matching_ebuilds, [&](size_t ebuild_id_1, size_t ebuild_id_2)
+                                        { return ebuilds[ebuild_id_1] < ebuilds[ebuild_id_2];});
+
     return matching_ebuilds;
 }
 
-const string &Package::get_pkg_groupname()
+const string &Package::get_pkg_groupname() const
 {
     return pkg_groupname;
 }
@@ -38,9 +40,14 @@ void Package::set_id(size_t pkg_id)
     this->pkg_id = pkg_id;
 }
 
-size_t Package::get_id()
+size_t Package::get_id() const
 {
     return pkg_id;
+}
+
+std::size_t Package::size() const
+{
+    return ebuilds.size();
 }
 
 void Package::parse_metadata()
@@ -55,12 +62,12 @@ void Package::parse_deps()
         ebuild.parse_deps();
 }
 
-NamedVector<Ebuild>& Package::get_ebuilds()
+const NamedVector<Ebuild> &Package::get_ebuilds() const
 {
     return ebuilds;
 }
 
-size_t Package::id_of(const std::string &version)
+size_t Package::ebuild_id_of(const std::string &version)
 {
     return ebuilds.id_of(version);
 }
@@ -73,41 +80,36 @@ Ebuild &Package::operator[](const string &ver)
     else return ebuilds[index];
 }
 
-Ebuild &Package::operator[](const size_t &id)
+Ebuild &Package::operator[](EbuildID id)
 {
     return ebuilds[id];
 }
 
-Ebuild& Package::add_version(const string &version, const fs::path &ebuild_path)
+Ebuild& Package::add_version(const string &version)
 {
-    size_t index = ebuilds.push_back(Ebuild(version, ebuild_path, db), version);
-    ebuilds.back().set_id(index);
-    ebuilds.back().set_pkg_id(pkg_id);
+    EbuildID ebuild_id = ebuild_id_of(version);
+    if(ebuild_id == npos)
+    {
+        ebuild_id = ebuilds.push_back(Ebuild(version, db), version);
+        ebuilds.back().set_id(ebuild_id);
+        ebuilds.back().set_pkg_id(pkg_id);
+    }
 
-    return ebuilds[index];
+    return ebuilds[ebuild_id];
 }
 
-void Package::set_installed_version(const std::string &version, const std::string &activated_useflags)
+Ebuild& Package::add_repo_version(const string &version, const fs::path &ebuild_repo_path)
 {
-    installed_pkg.ebuild_id = ebuilds.id_of(version);
-    installed_pkg.activated_useflags = get_activated_useflags(db->parser.parse_useflags(activated_useflags, true));
+    Ebuild& ebuild = add_version(version);
+    ebuild.set_ebuild_path(ebuild_repo_path);
+    return ebuild;
+}
 
-    if(installed_pkg.ebuild_id != ebuilds.npos and ebuilds[installed_pkg.ebuild_id].get_active_flags() != installed_pkg.activated_useflags)
-    {
-        cout << "Change of flag state for " + pkg_groupname + ": ";
-        vector<size_t> sym_diff;
-        set_symmetric_difference(ebuilds[installed_pkg.ebuild_id].get_active_flags().begin(), ebuilds[installed_pkg.ebuild_id].get_active_flags().end(),
-                installed_pkg.activated_useflags.begin(), installed_pkg.activated_useflags.end(),
-                back_inserter(sym_diff));
-        for(const auto &flag_id: sym_diff)
-        {
-            if(installed_pkg.activated_useflags.contains(flag_id))
-                cout << "-" + db->useflags.get_flag_name(flag_id);
-            else cout << "+" + db->useflags.get_flag_name(flag_id);
-            cout << " ";
-        }
-        cout << endl;
-    }
+Ebuild& Package::add_installed_version(const string& version, const std::filesystem::path &ebuild_install_path)
+{
+    Ebuild& ebuild = add_version(version);
+    ebuild.set_install_path(ebuild_install_path);
+    return ebuild;
 }
 
 void Package::assign_useflag_states(const PackageConstraint &constraint,
@@ -120,4 +122,24 @@ void Package::assign_useflag_states(const PackageConstraint &constraint,
     for(auto &ebuild: ebuilds)
         if(ebuild.respects_pkg_constraint(constraint))
             ebuild.assign_useflag_states(useflag_states, assign_type);
+}
+
+Package::iterator Package::begin()
+{
+    return ebuilds.begin();
+}
+
+Package::iterator Package::end()
+{
+    return ebuilds.end();
+}
+
+Package::const_iterator Package::cbegin() const
+{
+    return ebuilds.cbegin();
+}
+
+Package::const_iterator Package::cend() const
+{
+    return ebuilds.cend();
 }

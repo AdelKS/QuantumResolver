@@ -79,7 +79,7 @@ public:
 
     Parser(Database *db);
 
-    UseflagStates parse_useflags(const std::deque<std::string> &useflag_lines, bool default_state, bool create_flag_ids = false);
+    UseflagStates parse_useflags(const std::vector<std::string> &useflag_lines, bool default_state, bool create_flag_ids = false);
     UseflagStates parse_useflags(const std::string_view &useflags_str, bool default_state, bool create_ids = false);
     UseflagStates parse_keywords(const std::string_view &keywords_str);
     PkgUseToggles parse_pkguse_line(std::string_view pkg_useflag_toggles);

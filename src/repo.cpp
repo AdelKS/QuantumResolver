@@ -4,12 +4,14 @@
 #include <vector>
 #include <deque>
 #include <stdexcept>
-
 #include <chrono>
+#include <map>
+#include <array>
 using namespace std::chrono;
 
 #include "repo.h"
 #include "database.h"
+#include "misc_utils.h"
 
 using namespace std;
 namespace fs = filesystem;
@@ -19,8 +21,8 @@ Repo::Repo(Database *db) : db(db)
 //    auto start = high_resolution_clock::now();
 
     load_ebuilds("/var/db/repos/gentoo/metadata/md5-cache");
-    load_masked_and_forced_useflags();
-//    load_installed_pkgs();
+    load_installed_pkgs();
+    load_package_useflag_settings();
 //    parse_deps();
 
 //    auto end = high_resolution_clock::now();
@@ -39,48 +41,37 @@ void update_map(Map &original, const Map &update)
     }
 }
 
-void Repo::load_masked_and_forced_useflags()
+void Repo::load_package_useflag_settings()
 {
-
-    vector<tuple<string, FlagAssignType, vector<PkgUseToggles>&>> pkguse_profile_files =
+    const vector<pair<string, FlagAssignType>> pkguse_profile_files =
     {
-        {"package.use", FlagAssignType::DIRECT, pkg_use},
-        {"package.stable.use", FlagAssignType::STABLE_FORCE, pkg_use_stable},
+        {"package.use", FlagAssignType::DIRECT},
+        {"package.stable.use", FlagAssignType::STABLE_DIRECT},
 
-        {"package.use.force", FlagAssignType::DIRECT, pkg_use_force},
-        {"package.use.stable.force", FlagAssignType::STABLE_FORCE, pkg_use_stable},
+        {"package.use.force", FlagAssignType::FORCE},
+        {"package.use.stable.force", FlagAssignType::STABLE_FORCE},
 
-        {"package.use.mask", FlagAssignType::MASK, pkg_use_mask},
-        {"package.use.stable.mask", FlagAssignType::STABLE_MASK, pkg_use_stable_mask},
+        {"package.use.mask", FlagAssignType::MASK},
+        {"package.use.stable.mask", FlagAssignType::STABLE_MASK},
     };
-
-    const auto &profile_tree = get_profiles_tree();
 
     cout << "Reading profile tree and forwarding per package use, force and mask flags to ebuilds" << endl;
     auto start = high_resolution_clock::now();
 
-    for(auto it = profile_tree.rbegin() ; it != profile_tree.rend() ; it++)
-    {
-        for(auto &[profile_use_file, use_type, container]: pkguse_profile_files)
-        {
-            for(const auto &path: get_regular_files(it->string() + "/" + profile_use_file))
-            {
+    for(const auto& profile_path : flatenned_profiles_tree)
+        for(const auto& [profile_use_file, use_type]: pkguse_profile_files)
+            for(const auto &path: get_regular_files(profile_path.string() + "/" + profile_use_file))
                 for(string_view line: read_file_lines(path))
                 {
                     const auto &[pkg_constraint, use_toggles] = db->parser.parse_pkguse_line(line);
-                    container.emplace_back(make_pair(pkg_constraint, use_toggles));
+                    if(use_toggles.contains(db->useflags.get_flag_id("custom-cflags")))
+                        cout << "here!" << endl;
                     if(pkg_constraint.pkg_id != pkgs.npos) //TODO : deal with assigning unexisting useflags
-                    {
                         pkgs[pkg_constraint.pkg_id].assign_useflag_states(pkg_constraint, use_toggles, use_type);
-                    }
                 }
-            }
 
-        }
-    }
     auto end = high_resolution_clock::now();
     cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
-
 }
 
 
@@ -115,7 +106,7 @@ void Repo::load_ebuilds(const std::string &path)
         }
 
         Package &pkg = pkgs[pkg_id];
-        pkg.add_version(pkg_ver, entry.path());
+        pkg.add_repo_version(pkg_ver, entry.path());
     }
 
     auto end = high_resolution_clock::now();
@@ -151,22 +142,9 @@ void Repo::load_installed_pkgs()
 
             const size_t &pkg_id = pkgs.id_of(pkg_category + "/" + pkg_name);
             if(pkg_id != pkgs.npos)
-            {
-                const fs::path &useflags_path(pkg_namever_entry.path().string() + "/USE");
-                string useflags;
-                if(fs::is_regular_file(useflags_path))
-                {
-                    const auto &lines = read_file_lines(useflags_path);
-                    if(lines.size() > 1)
-                        cout << "Warning: " + useflags_path.string() + " contains more than one line" << endl;
+                pkgs[pkg_id].add_installed_version(pkg_ver, pkg_namever_entry);
+            else cout << pkg_category + "/" + pkg_name + " not in the ::gentoo repository" << endl;
 
-                    pkgs[pkg_id].set_installed_version(pkg_ver, lines[0]);
-                }
-            }
-            else
-            {
-                cout << pkg_category + "/" + pkg_name + " not in the ::gentoo repository" << endl;
-            }
         }
     }
 
@@ -179,23 +157,14 @@ size_t Repo::get_pkg_id(const string_view &pkg_str)
     return pkgs.id_of(pkg_str);
 }
 
+Package& Repo::operator [] (PackageID pkg_id)
+{
+    return pkgs[pkg_id];
+}
+
 const string& Repo::get_pkg_groupname(size_t pkg_id)
 {
     return pkgs[pkg_id].get_pkg_groupname();
-}
-
-
-void Repo::print_flag_states(const string &package_constraint_str)
-{
-    PackageConstraint pkg_constraint = db->parser.parse_pkg_constraint(package_constraint_str);
-    if(pkg_constraint.pkg_id == pkgs.npos)
-    {
-        cout << "Invalid atom: " << package_constraint_str << endl;
-        return;
-    }
-
-    for(auto &ebuild_id: pkgs[pkg_constraint.pkg_id].get_matching_ebuilds(pkg_constraint))
-        pkgs[pkg_constraint.pkg_id][ebuild_id].print_status();
 }
 
 void Repo::parse_ebuild_metadata()

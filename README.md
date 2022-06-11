@@ -10,33 +10,87 @@ The current main ideas:
 
 #### Currently exposed feature to the CLI
 
-One can query the state of the flags a package would be emerged with, basically this output from `emerge`:
+To properly work, the `quantum` executable needs an up-to-date `md5-cache` in `/var/db/repos/gentoo/metadata/md5-cache/`. One can update it by running the following command as root (it is quite fast)
 
 ```shell
-> $ emerge -qpvO ffmpeg
-[ebuild   R   ] media-video/ffmpeg-4.4.2-r1  USE="X alsa amf bzip2 dav1d encode fdk fontconfig gnutls gpl iconv jpeg2k ladspa libass lzma mp3 network openal opengl opus postproc pulseaudio rubberband sdl speex srt svg theora threads truetype v4l vaapi vdpau vmaf vorbis vpx vulkan webp x264 x265 xvid zlib -amr -amrenc (-appkit) -bluray -bs2b -cdio -chromaprint -chromium -codec2 -cpudetection -cuda -debug -doc -flite -frei0r -fribidi -gcrypt -gme -gmp -gsm -hardcoded-tables -iec61883 -ieee1394 -jack -kvazaar -libaom -libaribb24 -libcaca -libdrm -libilbc -librtmp -libsoxr -libtesseract -libv4l -libxml2 -lv2 (-mipsdspr1) (-mipsdspr2) (-mipsfpu) (-mmal) -modplug -nvenc -opencl -openh264 -openssl -oss -pic -rav1e -samba -snappy -sndio -ssh -static-libs -svt-av1 -test -twolame -verify-sig -vidstab -zeromq -zimg -zvbi" ABI_X86="32 (64) (-x32)" CPU_FLAGS_X86="aes avx avx2 fma3 mmx mmxext sse sse2 sse3 sse4_1 sse4_2 ssse3 -3dnow -3dnowext -fma4 -xop" FFTOOLS="aviocat cws2fws ffescape ffeval ffhash fourcc2pixfmt graph2dot ismindex pktdumper qt-faststart sidxindex trasher"
-
+egencache --update --repo gentoo
 ```
 
-To obtain the same thing with `quantum`:
+Currently, `quantum` offers `status` as a command line argument
 
 ```shell
-./quantum status "=media-video/ffmpeg-4.4.2"
+quantum status [atom]
 ```
 
-which outputs something like this
+where `[atom]` is for example `sys-devel/gcc` or `"=sys-devel/gcc-10.3*"`. It does a mixture between `equery y [atom]` and `emerge -qpvO [atom]`: it outputs the state of the flags for each version that matches `[atom]` if it were to be (re)emerged, while showing any eventual changed use with the same color code as `emerge`.
+
+The idea is to have it display a "matrix" view that gives all the necessary information. This is only a intermediary step that is needed to implement a proper dependency resolver: it needs to know of flag changes, installed packages, flag states... etc.
+
+##### Example
+Running the following command
+```shell
+./quantum status sys-devel/gcc
+```
+
+outputs something like this
 
 ```shell
-######################################
-media-video/ffmpeg   Version: 4.4.2
-  USE="X alsa amf bzip2 dav1d encode fdk fontconfig gnutls gpl iconv jpeg2k ladspa libass lzma mp3 network openal opengl opus postproc pulseaudio rubberband sdl speex srt svg theora threads truetype v4l vaapi vdpau vmaf vorbis vpx vulkan webp x264 x265 xvid zlib -amr -amrenc -appkit -bluray -bs2b -cdio -chromaprint -chromium -codec2 -cpudetection -cuda -debug -doc -flite -frei0r -fribidi -gcrypt -gme -gmp -gsm -hardcoded-tables -iec61883 -ieee1394 -jack -kvazaar -libaom -libaribb24 -libcaca -libdrm -libilbc -librtmp -libsoxr -libtesseract -libv4l -libxml2 -lv2 -mipsdspr1 -mipsdspr2 -mipsfpu -mmal -modplug -nvenc -opencl -openh264 -openssl -oss -pic -rav1e -samba -snappy -sndio -ssh -static-libs -svt-av1 -test -twolame -verify-sig -vidstab -zeromq -zimg -zvbi "
-  ABI_X86="32 64 "
-  ARCH="amd64 "
-  CPU_FLAGS_X86="aes avx avx2 fma3 mmx mmxext sse sse2 sse3 sse4_1 sse4_2 ssse3 "
-  FFTOOLS="aviocat cws2fws ffescape ffeval ffhash fourcc2pixfmt graph2dot ismindex pktdumper qt-faststart sidxindex trasher "
+##############################
+sys-devel/gcc
+~~~~~~~~~~~~~~~~~~~~
+Shared states
+--------------------
+USE="(cxx) fortran graphite (multilib) nls nptl openmp pgo (pie) sanitize ssp vtv (-ada) -debug -doc (-fixed-point) -go (-hardened) -jit (-libssp) -objc -objc++ -objc-gc -systemtap -test -vanilla"
+~~~~~~~~~~~~~~~~~~~~
+Matching versions
+--------------------
+    8.5.0-r1  USE="pch -mpx"
+--------------------
+    9.5.0  USE="pch -d -lto"
+--------------------
+    10.3.0-r2  USE="zstd (-cet) -d -lto (-pch)"
+--------------------
+    10.3.1_p20211126  USE="zstd (-cet) -d -lto (-pch)"
+--------------------
+    10.3.1_p20220526  USE="zstd (-cet) -d -lto (-pch)"
+--------------------
+    10.3.1_p20220602  USE="zstd (-cet) -d -lto (-pch)"
+--------------------
+    10.4.9999  USE="zstd (-cet) -d -lto (-pch)"
+--------------------
+    11.2.0  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+--------------------
+    11.2.1_p20220115  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+--------------------
+[I] 11.3.0  USE="zstd (-cet) (-custom-cflags) -d -lto* (-pch) -valgrind"
+--------------------
+    11.3.1_p20220527  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+--------------------
+    11.3.1_p20220603  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+--------------------
+    11.4.9999  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+--------------------
+    12.1.0  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+--------------------
+    12.1.1_p20220528  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+--------------------
+    12.1.1_p20220528-r1  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+--------------------
+    12.1.1_p20220604  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+--------------------
+    12.2.9999  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+--------------------
+    13.0.0_pre20220529  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+--------------------
+    13.0.0_pre20220605  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+--------------------
+    13.0.9999  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
 ```
 
-If one uses a less strict package atom, _e.g._ simply `media-video/ffmpeg`, it will output the flag state for each version of the package
+**Notes:**
+- The `lto` flag got disabled for demonstration purposes, one can see that it's printed as `-lto*` (with a star at the end, and in green in the terminal) only for the installed version.
+- The masked versions are not yet put between parentheses, _e.g._ `(13.0.9999)` instead of the displayed `13.0.9999`.
+
 #### How to (e)build
 
 In its current state, you need `qmake` (I will switch to `meson` when things get more serious)
@@ -52,5 +106,7 @@ For a debug build
 qmake CONFIG+='debug sanitizer sanitize_address' QuantumResolver.pro
 make
 ```
+
+This will create a `quantum` executable in the same folder.
 
 Otherwise, if you have `QtCreator` you can simply open the `.pro` file and setup the project for "Release" and "Debug" builds. Then press the "Play" button.

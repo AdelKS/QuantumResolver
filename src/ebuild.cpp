@@ -20,14 +20,55 @@ const std::unordered_map<std::string, DependencyType> Ebuild::dependency_types =
 // "needed so the package can run", but not needed before (during the emerge).
 // DependencyType::BUILD: needed before starting anything on the ebuild
 
+const std::vector<std::string> Ebuild::metadata_vars = {"BDEPEND", "IDEPEND", "DEPEND", "RDEPEND", "PDEPEND", "IUSE", "SLOT", "KEYWORDS"};
+// "USE" is only used when considering an installed ebuild
+
 Ebuild::Ebuild(string ver,
-               std::filesystem::path ebuild_path,
                Database *db):
-    eversion(std::move(ver)), db(db), masked(false), parsed_metadata(false), parsed_deps(false),
-    ebuild_path(std::move(ebuild_path)), ebuild_type(EbuildType::UNKNOWN)
+    eversion(std::move(ver)), db(db)
 {
     if(eversion.is_live())
         ebuild_type = EbuildType::LIVE;
+}
+
+void Ebuild::set_ebuild_path(std::filesystem::path path)
+{
+    /// Path of the cached version of the ebuild
+    /// in /var/db/repos/gentoo/metadata/md5-cache/
+
+    ebuild_path = std::move(path);
+}
+
+void Ebuild::set_install_path(std::filesystem::path path)
+{
+    /// Path of the folder containing metadata about the installed ebuild
+    /// in /var/db/pkg
+
+    installed = true;
+    install_path = std::move(path);
+
+    load_install_time_active_flags();
+}
+
+void Ebuild::load_install_time_active_flags()
+{
+    fs::path use_file = install_path.string() + "/USE";
+    if(fs::is_regular_file(use_file))
+    {
+        auto file_lines = read_file_lines(use_file);
+        if(file_lines.size() != 1)
+            throw runtime_error(fmt::format("{} should have only one line of text", use_file.string()));
+
+        auto flag_states = db->parser.parse_useflags(file_lines[0], true, true);
+
+        for(auto [flagID, state]: flag_states)
+        {
+            if(not state)
+                throw runtime_error("-flag found in USE file for installed package");
+
+            install_time_active_flags.insert(flagID);
+        }
+    }
 }
 
 void Ebuild::parse_deps()
@@ -35,20 +76,12 @@ void Ebuild::parse_deps()
     if(parsed_deps)
         return;
 
-    if(ebuild_lines.empty())
-        ebuild_lines = read_file_lines(ebuild_path);
+    if(ebuild_data.empty())
+        ebuild_data = read_unquoted_vars(ebuild_path, metadata_vars);
 
-    for(string_view ebuild_line_view: ebuild_lines)
-    {
-        for(const auto& [dep_str, dep_type]: dependency_types)
-        {
-            if(ebuild_line_view.starts_with(dep_str))
-            {
-                ebuild_line_view.remove_prefix(dep_str.size() + 1);
-                add_deps(parse_dep_string(ebuild_line_view), dep_type);
-            }
-        }
-    }
+    for(const auto& [dep_str, dep_type]: dependency_types)
+        if(ebuild_data.contains(dep_str))
+            add_deps(parse_dep_string(ebuild_data[dep_str]), dep_type);
 
     parsed_deps = true;
 }
@@ -58,67 +91,101 @@ void Ebuild::parse_metadata()
     if(parsed_metadata)
         return;
 
-    if(ebuild_lines.empty())
-        ebuild_lines = read_file_lines(ebuild_path);
+    if(ebuild_data.empty())
+        load_data();
 
-    for(string_view ebuild_line_view: ebuild_lines)
+    if(ebuild_data.contains("IUSE"))
     {
-        if(ebuild_line_view.starts_with("IUSE"))
+        auto flag_states = db->parser.parse_useflags(ebuild_data["IUSE"], false, true);
+        add_iuse_flags(flag_states);
+
+        // Define iuse_effective and retrieve initial state of flags from global state
+        // the state then will be changed with assign_use_flag_state() calls from Repository
+        // because Repository will read package useflag custom settings
+        iuse_effective = (db->useflags.get_implicit_flags() + iuse);
+        use += (db->useflags.get_use() & iuse_effective); // + use is to keep the default states from IUSE, e.g. +flag -flag2
+        use_force += db->useflags.get_use_force() & iuse_effective;
+        use_mask += db->useflags.get_use_mask() & iuse_effective;
+    }
+    else if(ebuild_data.contains("SLOT"))
+    {
+        size_t subslot_sep_index = ebuild_data["SLOT"].find_first_of("/");
+        if(subslot_sep_index == string::npos)
         {
-            // shrink by 5 to remove the "IUSE=" in the beginning
-            ebuild_line_view.remove_prefix(5);
-
-            auto flag_states = db->parser.parse_useflags(ebuild_line_view, false, true);
-            add_iuse_flags(flag_states);
-
-            unordered_set<string> use_names;
-            for(size_t flag_id: use)
-                use_names.insert(db->useflags.get_flag_name(flag_id));
-
+            slot = ebuild_data["SLOT"];
+            subslot = ebuild_data["SLOT"];
         }
-        else if(ebuild_line_view.starts_with("SLOT"))
+        else
         {
-            ebuild_line_view.remove_prefix(5);
-            size_t subslot_sep_index = ebuild_line_view.find_first_of("/");
-            if(subslot_sep_index == string_view::npos)
-            {
-                slot = ebuild_line_view;
-                subslot = ebuild_line_view;
-            }
-            else
-            {
-                slot = ebuild_line_view.substr(0, subslot_sep_index);
-                subslot = ebuild_line_view.substr(subslot_sep_index+1);
-            }
+            slot = ebuild_data["SLOT"].substr(0, subslot_sep_index);
+            subslot = ebuild_data["SLOT"].substr(subslot_sep_index+1);
         }
-        else if(ebuild_type != EbuildType::UNKNOWN and ebuild_line_view.starts_with("KEYWORDS"))
+    }
+    else if(ebuild_type == EbuildType::UNKNOWN and ebuild_data.contains("KEYWORDS"))
+    {
+        const auto &keywords = db->parser.parse_keywords(ebuild_data["KEYWORDS"]);
+        for(const auto &[keyword_id, is_testing]: keywords)
         {
-            ebuild_line_view.remove_prefix(9);
-            const auto &keywords = db->parser.parse_keywords(ebuild_line_view);
-            for(const auto &[keyword_id, is_testing]: keywords)
+            if(db->useflags.get_arch_id() == keyword_id)
             {
-                if(db->useflags.get_arch_id() == keyword_id)
-                {
-                    ebuild_type = is_testing ? EbuildType::TESTING : EbuildType::STABLE;
-                    break;
-                }
+                ebuild_type = is_testing ? EbuildType::TESTING : EbuildType::STABLE;
+                break;
             }
         }
     }
-
-    iuse_effective = (db->useflags.get_implicit_flags() + iuse);
-
-    use = (db->useflags.get_use() & iuse_effective) + use;
-    use_force = db->useflags.get_use_force() & iuse_effective;
-    use_mask = db->useflags.get_use_mask() & iuse_effective;
 
     if(ebuild_type == EbuildType::STABLE)
     {
-        use_force = db->useflags.get_use_stable_force() & iuse_effective;
-        use_mask = db->useflags.get_use_stable_mask() & iuse_effective;
+        use_force += db->useflags.get_use_stable_force() & iuse_effective;
+        use_mask += db->useflags.get_use_stable_mask() & iuse_effective;
     }
 
     parsed_metadata = true;
+}
+
+void Ebuild::finalize_flag_states()
+{
+    if(not parsed_metadata)
+        parse_metadata();
+
+    finalized_flag_states = true;
+
+    if(installed)
+        changed_use = (get_active_flags() != install_time_active_flags);
+}
+
+void Ebuild::load_data()
+{
+    /// parse from /var/db/repos/gentoo/metadata/md5-cache/
+
+    ebuild_data.clear();
+
+    if(not ebuild_path.empty())
+    {
+        // Prefer ebuild_path over install path to get data
+        ebuild_data = read_unquoted_vars(ebuild_path, metadata_vars);
+
+        if(ebuild_data.contains("USE"))
+            throw runtime_error("USE line in ebuild, should not exist");
+    }
+    else
+    {
+        assert(not install_path.empty());
+
+        for(const string& var_str: metadata_vars)
+        {
+            fs::path var_file = install_path.string() + "/" + var_str;
+            if(not fs::is_regular_file(var_file))
+                continue;
+
+            auto file_lines = read_file_lines(var_file);
+
+            if(file_lines.empty() or file_lines.size() > 1)
+                throw runtime_error("Weird format in metadata of installed package");
+
+            ebuild_data[var_str] = std::move(read_file_lines(var_file)[0]);
+        }
+    }
 }
 
 void Ebuild::add_iuse_flag(size_t flag_id, bool default_state)
@@ -131,19 +198,19 @@ void Ebuild::add_iuse_flag(size_t flag_id, bool default_state)
 void Ebuild::add_iuse_flags(std::unordered_map<std::size_t, bool> useflags_and_default_states)
 {
     for(const auto &[flag_id, flag_state]: useflags_and_default_states)
-    {
         add_iuse_flag(flag_id, flag_state);
-    }
 }
 
 void Ebuild::assign_useflag_state(size_t flag_id, bool state, const FlagAssignType &assign_type)
 {
-    parse_metadata();
+    if(not parsed_metadata)
+        parse_metadata();
 
     if(not iuse_effective.contains(flag_id))
         return;
 
-    if(assign_type == FlagAssignType::DIRECT)
+    if(assign_type == FlagAssignType::DIRECT or
+            (assign_type == FlagAssignType::STABLE_DIRECT and ebuild_type == EbuildType::STABLE))
     {
         if(state)
             use.insert(flag_id);
@@ -165,20 +232,100 @@ void Ebuild::assign_useflag_state(size_t flag_id, bool state, const FlagAssignTy
     }
 }
 
-std::unordered_set<size_t> Ebuild::get_active_flags()
+bool Ebuild::has_changed_use()
+{
+    return changed_use;
+}
+
+bool Ebuild::is_installed() const
+{
+    return installed;
+}
+
+std::unordered_set<FlagID> Ebuild::get_active_flags()
+{
+    if(not finalized_flag_states)
+        finalize_flag_states();
+
+    return use + use_force - use_mask;
+}
+
+std::unordered_set<FlagID> Ebuild::get_changed_flags()
+{
+    /// \brief when package is installed, returns the flags whose state has changed
+    ///        with respect to install time ones (will be re-emerged if an update is performed)
+
+    if(not finalized_flag_states)
+        finalize_flag_states();
+
+    if(installed)
+        return get_active_flags() ^ get_install_active_flags();
+    else return std::unordered_set<FlagID>();
+}
+
+std::unordered_set<FlagID> Ebuild::get_enforced_flags()
+{
+    /// \brief returns the set of flags that are either masked or forced
+    if(not finalized_flag_states)
+        finalize_flag_states();
+
+    return use_force + use_mask;
+}
+
+std::unordered_set<FlagID> Ebuild::get_install_active_flags()
+{
+    if(not finalized_flag_states)
+        finalize_flag_states();
+
+    return install_time_active_flags;
+}
+
+const std::unordered_set<FlagID>& Ebuild::get_use()
+{
+    if(not finalized_flag_states)
+        finalize_flag_states();
+
+    return use;
+}
+
+const std::unordered_set<FlagID>& Ebuild::get_iuse()
 {
     if(not parsed_metadata)
         parse_metadata();
 
-    return use + use_force - use_mask;
+    return iuse;
+}
+
+const std::unordered_set<FlagID>& Ebuild::get_use_mask()
+{
+    if(not finalized_flag_states)
+        finalize_flag_states();
+
+    return use_mask;
+}
+
+const std::unordered_set<FlagID>& Ebuild::get_use_force()
+{
+    if(not finalized_flag_states)
+        finalize_flag_states();
+
+    return use_force;
+}
+
+const std::string& Ebuild::get_slot() const
+{
+    return slot;
+}
+
+const std::string& Ebuild::get_subslot() const
+{
+    return subslot;
 }
 
 void Ebuild::assign_useflag_states(const UseflagStates &useflag_states, const FlagAssignType &assign_type)
 {
     for(const auto &[flag_id, flag_state]: useflag_states)
-    {
         assign_useflag_state(flag_id, flag_state, assign_type);
-    }
 }
 
 void Ebuild::set_id(size_t id)
@@ -327,59 +474,10 @@ Dependencies Ebuild::parse_dep_string(string_view dep_string)
     return deps;
 }
 
-void Ebuild::print_status()
-{
-    parse_metadata();
-
-    unordered_set<string> use_names;
-    for(size_t flag_id: use)
-        use_names.insert(db->useflags.get_flag_name(flag_id));
-
-    cout << "######################################" << endl;
-    cout << db->repo.get_pkg_groupname(pkg_id) << "   Version: " << eversion.get_version() << endl;
-
-    cout << "  USE=\"";
-    for(const auto& flag_name: db->useflags.to_flag_names((use & iuse) - db->useflags.get_expand_flags()))
-        cout << flag_name << " ";
-    for(const auto& flag_name: db->useflags.to_flag_names(((iuse - use) - db->useflags.get_expand_flags())))
-        cout << '-' << flag_name << " ";
-    cout << "\"" << endl;
-
-    auto enabled_expand_flag_ids = use & db->useflags.get_expand_flags();
-    if(not enabled_expand_flag_ids.empty())
-    {
-        map<string, set<string>> enabled_expands;
-        for(FlagID flag_id: enabled_expand_flag_ids)
-        {
-            string flag_name = db->useflags.get_flag_name(flag_id);
-            auto [expand_name, expand_type] = db->useflags.get_use_expand_info(flag_id);
-            if(not expand_type.hidden)
-            {
-                if(not expand_type.unprefixed)
-                {
-                    if(expand_name.size() + 2 >= flag_name.size())
-                        throw runtime_error("Something went wrong");
-                    flag_name = flag_name.substr(expand_name.size()+1);
-                }
-                enabled_expands[std::move(expand_name)].insert(std::move(flag_name));
-            }
-
-        }
-
-        for(const auto& [expand_name, expand_flag_names]: enabled_expands)
-        {
-            cout << "  " << expand_name << "=\"";
-            for(const auto& expand_flag_name: expand_flag_names)
-                cout << expand_flag_name << " ";
-            cout << "\"" << endl;
-        }
-    }
-}
-
 FlagState Ebuild::get_flag_state(const size_t &flag_id)
 {
-    if(not parsed_deps)
-        parse_deps();
+    if(not finalized_flag_states)
+        finalize_flag_states();
 
     FlagState state = FlagState::NOT_IN_IUSE_EFFECTIVE;
     if(not iuse_effective.contains(flag_id))

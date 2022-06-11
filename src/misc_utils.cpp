@@ -305,8 +305,10 @@ unordered_set<size_t> get_activated_useflags(unordered_map<size_t, bool> flag_st
     return activated_flags;
 }
 
-const vector<fs::path> &get_profiles_tree()
+vector<fs::path> get_profiles_tree()
 {
+    vector<fs::path> profile_tree = {"/etc/portage/profile", "/etc/portage"};
+
     fs::path profile_symlink("/etc/portage/make.profile");
     if(not fs::is_symlink(profile_symlink))
         throw runtime_error("/etc/portage/make.profile doesn't exist or isn't a symlink");
@@ -317,43 +319,36 @@ const vector<fs::path> &get_profiles_tree()
     cout << "Populating profile tree" << endl;
     auto start = high_resolution_clock::now();
 
-    static vector<fs::path> profile_tree = {"/etc/portage", profile};
-    static bool tree_already_populated = false;
+    vector<fs::path> current_depth_profiles = {profile};
+    vector<fs::path> next_depth_profiles;
 
-    if(not tree_already_populated)
+    while(not current_depth_profiles.empty())
     {
-        tree_already_populated = true;
-        deque<fs::path> explore_queue = {profile};
-
-        while(not explore_queue.empty())
+        profile_tree.insert(profile_tree.begin(), current_depth_profiles.cbegin(), current_depth_profiles.cend());
+        for(const auto& curr_profile: current_depth_profiles)
         {
-            const fs::path curr_profile = explore_queue.back(); explore_queue.pop_back();
+            fs::path parent_file_path(curr_profile.string() + "/parent");
+            if(not fs::is_regular_file(parent_file_path))
+                continue;
 
-            const fs::path &parent_file_path(curr_profile.string() + "/parent");
-            if(fs::is_regular_file(parent_file_path))
+            for(const string &line: read_file_lines(parent_file_path))
             {
-                deque<fs::path> new_profiles;
-                // Invert the list of explored profiles in the parent file
-                // so the first line of "parent" is explored first
-                for(const string &line: read_file_lines(parent_file_path))
-                {
-                    const auto &new_profile = fs::canonical(fs::path(curr_profile.string() + "/" + line + "/"));
-                    new_profiles.push_front(new_profile);
-                }
-                for(const auto &profile: new_profiles)
-                {
-                    profile_tree.push_back(profile);
-                    explore_queue.push_back(profile);
-                }
+                auto new_profile = fs::canonical(fs::path(curr_profile.string() + "/" + line + "/"));
+                next_depth_profiles.push_back(new_profile);
             }
         }
+        std::swap(current_depth_profiles, next_depth_profiles);
+        next_depth_profiles.clear();
     }
+
 
     auto end = high_resolution_clock::now();
     cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
 
     return profile_tree;
 }
+
+const std::vector<std::filesystem::path> flatenned_profiles_tree = get_profiles_tree();
 
 string to_lower(string_view sv)
 {

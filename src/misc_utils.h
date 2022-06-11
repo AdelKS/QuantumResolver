@@ -18,7 +18,17 @@
 #include <set>
 #include <cctype>
 
+#define FMT_HEADER_ONLY
+#include <fmt/format.h>
+#include <fmt/color.h>
+
+constexpr fmt::rgb gentoo_blue(18,72,139);
+constexpr fmt::rgb gentoo_red(192,28,40);
+constexpr fmt::rgb gentoo_green(38,162,105);
+
 #define LINE_MAX_SIZE 50000
+
+const extern std::vector<std::filesystem::path> flatenned_profiles_tree;
 
 std::string exec(const char* cmd);
 
@@ -49,8 +59,6 @@ std::vector<std::pair<std::size_t, std::string_view>> split_string(const std::st
                                                               const std::size_t first_variable_sep_index = 0);
 
 std::unordered_set<std::size_t> get_activated_useflags(std::unordered_map<std::size_t, bool> flag_states);
-
-const std::vector<std::filesystem::path> &get_profiles_tree();
 
 std::string to_lower(std::string_view sv);
 std::string to_lower(std::string&& sv);

@@ -6,6 +6,8 @@
 #include <filesystem>
 #include <memory>
 #include <limits>
+#include <string>
+#include <string_view>
 
 #include "package.h"
 #include "parser.h"
@@ -14,17 +16,19 @@
 
 class Database;
 
+using PackageID = std::size_t;
+
 class Repo
 {
 public:
     Repo(Database *db);
 
-    void print_flag_states(const string &package);
+    std::size_t get_useflag_id(const std::string_view &flag_str, bool create_ids);
+    std::size_t get_pkg_id(const std::string_view &pkg_str);
 
-    size_t get_useflag_id(const string_view &flag_str, bool create_ids);
-    size_t get_pkg_id(const string_view &pkg_str);
+    const std::string& get_pkg_groupname(std::size_t pkg_id);
 
-    const string& get_pkg_groupname(size_t pkg_id);
+    Package& operator [] (PackageID pkg_id);
 
     constexpr static std::size_t npos = std::numeric_limits<std::size_t>::max();
 
@@ -35,10 +39,7 @@ protected:
     void parse_ebuild_metadata();
     void parse_deps();
 
-    void load_masked_and_forced_useflags();
-
-    vector<PkgUseToggles> pkg_use, pkg_use_stable, pkg_use_mask, pkg_use_force, pkg_use_stable_force, pkg_use_stable_mask;
-    // per pkg use flag overrides
+    void load_package_useflag_settings();
 
     NamedVector<Package> pkgs;
 
