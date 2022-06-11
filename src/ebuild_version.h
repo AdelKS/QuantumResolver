@@ -26,7 +26,7 @@ public:
 
     bool respects_constraint(const VersionConstraint &constraint);
 
-    const std::string &get_version();
+    const std::string &string() const;
     bool is_live();
 
 protected:

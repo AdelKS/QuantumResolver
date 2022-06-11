@@ -2,30 +2,29 @@
 #include <algorithm>
 #include <iostream>
 #include <ranges>
+#include <string>
 
 #include "ebuild_version.h"
 #include "misc_utils.h"
 
-using namespace std;
-
 template<class Object>
-size_t index_of(const vector<Object> vec, Object obj)
+std::size_t index_of(const std::vector<Object> vec, Object obj)
 {
     // Get the index of obj in vec
-    return size_t(find(vec.cbegin(), vec.cend(), obj) - vec.cbegin());
+    return std::size_t(find(vec.cbegin(), vec.cend(), obj) - vec.cbegin());
 }
 
 // The regex that validates EBUILD version strings
-const regex EbuildVersion::ver_regexp = regex("^(\\d+)((\\.\\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\\d*)*)(-r(\\d+))?$");
+const std::regex EbuildVersion::ver_regexp = std::regex("^(\\d+)((\\.\\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\\d*)*)(-r(\\d+))?$");
 
 // All the separators in an EBUILD string
-const vector<string> EbuildVersion::ordered_separators = {"-r", "_alpha", "_beta", "_pre", "_rc", "_p", "."};
+const std::vector<std::string> EbuildVersion::ordered_separators = {"-r", "_alpha", "_beta", "_pre", "_rc", "_p", "."};
 
 // Index of "." in ordered_separators
-const size_t EbuildVersion::dot_index = index_of(EbuildVersion::ordered_separators, string("."));
+const std::size_t EbuildVersion::dot_index = index_of(EbuildVersion::ordered_separators, std::string("."));
 
 
-inline bool is_smaller_than_nothing(const size_t sep_index)
+inline bool is_smaller_than_nothing(const std::size_t sep_index)
 {
     // if sep_index refers to "_rc", "_pre", "_beta" or "_alpha", return true.
     // If an ebuild has a version string v, then v' = v + (any of the separators above) + (whatever else) makes the version v' smaller
@@ -38,7 +37,7 @@ EbuildVersion::EbuildVersion() : live(false)
 {
 }
 
-EbuildVersion::EbuildVersion(string ver) : live(false)
+EbuildVersion::EbuildVersion(std::string ver) : live(false)
 {
     set_version(std::move(ver));
 }
@@ -72,10 +71,10 @@ bool EbuildVersion::respects_constraint(const VersionConstraint &constraint)
         break;
     }
 
-    throw runtime_error("Version constraint check failed.");
+    throw std::runtime_error("Version constraint check failed.");
 }
 
-const std::string &EbuildVersion::get_version()
+const std::string &EbuildVersion::string() const
 {
     return version;
 }
@@ -88,7 +87,7 @@ bool EbuildVersion::is_live()
 void EbuildVersion::update_live_bool(const std::vector<std::pair<std::size_t, std::string_view>>& split)
 {
     /// Update the bool 'live' that says if this version is a live version
-    auto res = ranges::find_if(split.rbegin(), split.rend(), [](const auto& pair){return pair.first == dot_index;});
+    auto res = std::ranges::find_if(split.rbegin(), split.rend(), [](const auto& pair){return pair.first == dot_index;});
     live = res != split.rend() and res->second.starts_with("9999");
 }
 
@@ -102,16 +101,16 @@ void EbuildVersion::set_version(std::string ver)
     }
 
     if(not regex_match(ver, ver_regexp))
-        throw runtime_error("Version string of invalid format : " + ver);
+        throw std::runtime_error("Version string of invalid format : " + ver);
 
-    vector<pair<size_t, string_view>> split = split_string(ver, ordered_separators, dot_index);
+    std::vector<std::pair<std::size_t, std::string_view>> split = split_string(ver, ordered_separators, dot_index);
 
     // check the string split for "9999" to know if the ebuild is a live one
     update_live_bool(split);
 
     long letter_number = 0;
     ulong number = 0;
-    size_t end_pos;
+    std::size_t end_pos;
     bool letter_found = false;
 
     // convert split to version_parsing
@@ -123,25 +122,25 @@ void EbuildVersion::set_version(std::string ver)
             continue;
         }
 
-        letter_found = isalpha(str_view.back(), locale("C"));
+        letter_found = isalpha(str_view.back(), std::locale("C"));
         if(letter_found)
         {
             if(index != dot_index)
-                throw runtime_error("something is wrong with this version string: " + ver);
+                throw std::runtime_error("something is wrong with this version string: " + ver);
 
             letter_number = str_view.back();
             str_view.remove_suffix(1);
         }
 
         // one could use `strtoul` wiht str_view.data() but we cannot limit where to stop.
-        number = stoul(string(str_view), &end_pos);
+        number = stoul(std::string(str_view), &end_pos);
         if(end_pos == str_view.size())
         {
           version_parsing.emplace_back(index, number);
           if(letter_found)
               version_parsing.emplace_back(dot_index, letter_number);
         }
-        else throw runtime_error("the following string couldn't be converted entirely to an integer: " + string(str_view));
+        else throw std::runtime_error("the following string couldn't be converted entirely to an integer: " + std::string(str_view));
 
     }
 
@@ -161,7 +160,7 @@ bool operator < (const EbuildVersion &a, const EbuildVersion &b)
      *      Note: "-r", ".", "_rc" are actually referenced by their integer priority, given by their index in ordered_separators
      *      */
 
-    const size_t min_size = min(a.version_parsing.size(), b.version_parsing.size());
+    const std::size_t min_size = std::min(a.version_parsing.size(), b.version_parsing.size());
     const auto res = lexicographical_compare_three_way(a.version_parsing.cbegin(),  a.version_parsing.cbegin() + long(min_size),
                                                        b.version_parsing.cbegin(),  b.version_parsing.cbegin() + long(min_size));
 
@@ -178,7 +177,7 @@ bool operator <= (const EbuildVersion &a, const EbuildVersion &b)
 {
     // returns true if this <= 1.23
 
-    const size_t min_size = min(a.version_parsing.size(), b.version_parsing.size());
+    const std::size_t min_size = std::min(a.version_parsing.size(), b.version_parsing.size());
     const auto res = lexicographical_compare_three_way(a.version_parsing.cbegin(),  a.version_parsing.cbegin() + long(min_size),
                                                        b.version_parsing.cbegin(),  b.version_parsing.cbegin() + long(min_size));
 
@@ -228,7 +227,7 @@ bool operator *= (const EbuildVersion &a, const EbuildVersion &b)
     if(a.version_parsing.size() < b.version_parsing.size())
         return false;
 
-    const size_t min_size = b.version_parsing.size();
+    const std::size_t min_size = b.version_parsing.size();
     const auto res = lexicographical_compare_three_way(a.version_parsing.cbegin(),  a.version_parsing.cbegin() + long(min_size),
                                                        b.version_parsing.cbegin(),  b.version_parsing.cbegin() + long(min_size));
 
@@ -240,11 +239,11 @@ bool operator ^= (const EbuildVersion &a, const EbuildVersion &b)
 {
     // returns true if this ~ 1.23
 
-    size_t rev_sep_index = index_of(a.ordered_separators, string("-r"));
+    std::size_t rev_sep_index = index_of(a.ordered_separators, std::string("-r"));
 
     // we compare packages without revision numbers. e.g. [(".", 1), (".", 2), ("-r", 1)] -> [(".", 1), (".", 2)]
-    const size_t size = a.version_parsing.back().first == rev_sep_index ? a.version_parsing.size() - 1 : a.version_parsing.size();
-    const size_t other_size = b.version_parsing.back().first == rev_sep_index ? b.version_parsing.size() - 1 : b.version_parsing.size();
+    const std::size_t size = a.version_parsing.back().first == rev_sep_index ? a.version_parsing.size() - 1 : a.version_parsing.size();
+    const std::size_t other_size = b.version_parsing.back().first == rev_sep_index ? b.version_parsing.size() - 1 : b.version_parsing.size();
 
     // when the revision numbers are omitted, the version parsings should have the same length
     if(size != other_size)
