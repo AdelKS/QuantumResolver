@@ -204,8 +204,6 @@ auto read_vars(const filesystem::path& file_path,
 
     auto emplace_result = [&vars](string v1, string v2)
     {
-        if(v2.starts_with("rapi"))
-            cout << "here!";
         if constexpr (sizeof...(StartWithContiner) == 1)
             vars.emplace(move(v1), move(v2));
         else vars.emplace_back(move(v1), move(v2));
@@ -273,14 +271,13 @@ vector<pair<string, string>> read_unquoted_vars(const filesystem::path& file_pat
 
 string_view get_next_word(string_view &words_line)
 {
-    // pops the first words from worlds_line and returns it
-    // making words_line smaller in the process
-    // e.g. "   hello there   " -> return "hello" and make words_line = "there"
+    /// \brief pops the first word from 'worlds_line' and returns it
+    /// \brief making words_line smaller in the process
+    /// \param words_line: string of "words" (random sequence of characters), separated by spaces
+    /// \returns first word in 'words_line'
+    /// \example "   hello there   " -> return "hello" and make words_line = "there"
 
     skim_spaces_at_the_edges(words_line);
-    if(words_line.empty())
-        return string_view();
-
     size_t next_space = words_line.find(' ');
     string_view ret;
     if(next_space == string_view::npos)
@@ -290,6 +287,9 @@ string_view get_next_word(string_view &words_line)
         ret = words_line.substr(0, next_space);
         words_line = words_line.substr(next_space + 1);
     }
+
+    if(ret.empty())
+        throw runtime_error("emtpy next word");
 
     return ret;
 }
