@@ -11,7 +11,10 @@
 #include "ebuild_version.h"
 #include "named_vector.h"
 
-
+typedef std::size_t ExpandID;
+typedef std::size_t FlagID;
+typedef std::size_t ArchID;
+typedef std::string FlagName;
 
 struct SlotConstraint
 {
@@ -68,6 +71,21 @@ struct Toggle
     bool state = false;
 };
 
+struct KeywordStates
+{
+    enum struct State {UNDEFINED, BROKEN, STABLE, TESTING, LIVE};
+    std::unordered_map<ArchID, State> explicitely_defined;
+    State everything_else = State::UNDEFINED;
+
+    State get_state(ArchID arch)
+    {
+        auto it = explicitely_defined.find(arch);
+        if(it != explicitely_defined.end())
+            return it->second;
+        else return everything_else;
+    }
+};
+
 class Database;
 
 using UseflagStates = std::unordered_map<std::size_t, bool>;
@@ -81,7 +99,10 @@ public:
 
     UseflagStates parse_useflags(const std::vector<std::string> &useflag_lines, bool default_state, bool create_flag_ids = false);
     UseflagStates parse_useflags(const std::string_view &useflags_str, bool default_state, bool create_ids = false);
-    UseflagStates parse_keywords(const std::string_view &keywords_str);
+
+    enum struct KeywordType {USER, EBUILD};
+    KeywordStates parse_keywords(std::string_view keywords_str, KeywordType type);
+
     PkgUseToggles parse_pkguse_line(std::string_view pkg_useflag_toggles);
 
     PackageDependency parse_pkg_dependency(std::string_view pkg_constraint_str);
@@ -89,6 +110,8 @@ public:
     PackageConstraint parse_pkg_constraint(std::string_view pkg_constraint_str);
 
 protected:
+
+
     Database *db;
 
 };

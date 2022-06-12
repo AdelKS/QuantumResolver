@@ -28,7 +28,7 @@ Ebuild::Ebuild(string ver,
     eversion(std::move(ver)), db(db)
 {
     if(eversion.is_live())
-        ebuild_type = EbuildType::LIVE;
+        keywords.everything_else = KeywordStates::State::LIVE;
 }
 
 void Ebuild::set_ebuild_path(std::filesystem::path path)
@@ -104,10 +104,11 @@ void Ebuild::parse_metadata()
         // because Repository will read package useflag custom settings
         iuse_effective = (db->useflags.get_implicit_flags() + iuse);
         use += (db->useflags.get_use() & iuse_effective); // + use is to keep the default states from IUSE, e.g. +flag -flag2
-        use_force += db->useflags.get_use_force() & iuse_effective;
-        use_mask += db->useflags.get_use_mask() & iuse_effective;
+        use_force = db->useflags.get_use_force() & iuse_effective;
+        use_mask = db->useflags.get_use_mask() & iuse_effective;
     }
-    else if(ebuild_data.contains("SLOT"))
+
+    if(ebuild_data.contains("SLOT"))
     {
         size_t subslot_sep_index = ebuild_data["SLOT"].find_first_of("/");
         if(subslot_sep_index == string::npos)
@@ -121,23 +122,14 @@ void Ebuild::parse_metadata()
             subslot = ebuild_data["SLOT"].substr(subslot_sep_index+1);
         }
     }
-    else if(ebuild_type == EbuildType::UNKNOWN and ebuild_data.contains("KEYWORDS"))
-    {
-        const auto &keywords = db->parser.parse_keywords(ebuild_data["KEYWORDS"]);
-        for(const auto &[keyword_id, is_testing]: keywords)
-        {
-            if(db->useflags.get_arch_id() == keyword_id)
-            {
-                ebuild_type = is_testing ? EbuildType::TESTING : EbuildType::STABLE;
-                break;
-            }
-        }
-    }
 
-    if(ebuild_type == EbuildType::STABLE)
+    if(ebuild_data.contains("KEYWORDS"))
+        keywords = db->parser.parse_keywords(ebuild_data["KEYWORDS"], Parser::KeywordType::EBUILD);
+
+    if(keywords.get_state(db->useflags.get_arch_id()) == KeywordStates::State::STABLE)
     {
-        use_force += db->useflags.get_use_stable_force() & iuse_effective;
-        use_mask += db->useflags.get_use_stable_mask() & iuse_effective;
+        use_force = db->useflags.get_use_stable_force() & iuse_effective;
+        use_mask = db->useflags.get_use_stable_mask() & iuse_effective;
     }
 
     parsed_metadata = true;
@@ -210,21 +202,21 @@ void Ebuild::assign_useflag_state(size_t flag_id, bool state, const FlagAssignTy
         return;
 
     if(assign_type == FlagAssignType::DIRECT or
-            (assign_type == FlagAssignType::STABLE_DIRECT and ebuild_type == EbuildType::STABLE))
+            (assign_type == FlagAssignType::STABLE_DIRECT and keywords.get_state(db->useflags.get_arch_id()) == KeywordStates::State::STABLE))
     {
         if(state)
             use.insert(flag_id);
         else use.erase(flag_id);
     }
     else if(assign_type == FlagAssignType::FORCE or
-            (assign_type == FlagAssignType::STABLE_FORCE and ebuild_type == EbuildType::STABLE))
+            (assign_type == FlagAssignType::STABLE_FORCE and keywords.get_state(db->useflags.get_arch_id()) == KeywordStates::State::STABLE))
     {
         if(state)
             use_force.insert(flag_id);
         else use_force.erase(flag_id);
     }
     else if(assign_type == FlagAssignType::MASK or
-            (assign_type == FlagAssignType::STABLE_MASK and ebuild_type == EbuildType::STABLE))
+            (assign_type == FlagAssignType::STABLE_MASK and keywords.get_state(db->useflags.get_arch_id()) == KeywordStates::State::STABLE))
     {
         if(state)
             use_mask.insert(flag_id);

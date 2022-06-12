@@ -1,6 +1,8 @@
 #include "misc_utils.h"
 #include "package.h"
 #include "database.h"
+#include "parser.h"
+#include "src/useflags.h"
 
 using namespace std;
 
@@ -20,7 +22,7 @@ UseflagStates Parser::parse_useflags(const vector<string> &useflag_lines, bool d
     return useflag_states;
 }
 
-UseflagStates Parser::parse_keywords(const string_view &keywords_str)
+KeywordStates Parser::parse_keywords(string_view keywords_str, KeywordType type)
 {
     /* Parses the keywords from a KEYWORDS="..." string
      * e.g. it can receive "~keyword1 keyword2 keyword3" as an input
@@ -28,52 +30,52 @@ UseflagStates Parser::parse_keywords(const string_view &keywords_str)
      * the bool is true when testing, i.e ~keyword
      * */
 
-    auto start_it = keywords_str.begin(), end_it = keywords_str.begin();
+    static const unordered_map<char, KeywordStates::State> prefix_to_state =
+    { {'-', KeywordStates::State::BROKEN}, {'~', KeywordStates::State::TESTING} };
 
-    UseflagStates keywords;
-    bool testing = false; // Testing
+    KeywordStates keyword_states;
 
-    bool found_keyword = false;
-    while (start_it != keywords_str.end())
+    size_t word = 1;
+    while(not keywords_str.empty())
     {
-        if(not found_keyword)
+        if(keyword_states.everything_else == KeywordStates::State::LIVE)
+            throw runtime_error("Settings keywords after ** is useless");
+
+        KeywordStates::State state = KeywordStates::State::STABLE;
+        string_view keyword = get_next_word(keywords_str); // get_next_word throws if the returned string_view is empty
+
+        if(prefix_to_state.contains(keyword[0]))
         {
-            if(*start_it == ' ')
-            {
-                start_it++;
-                continue;
-            }
-
-            found_keyword = true;
-            if(*start_it == '~')
-            {
-                testing = true;
-                start_it++;
-            }
-
-            end_it = start_it;
+            keyword.remove_prefix(1);
+            state = prefix_to_state.at(keyword[0]);
         }
-        else
+
+        if(keyword == "*")
         {
-            if(*end_it == ' ' or end_it == keywords_str.end())
-            {
-                // We isolated a useflag between start_it and end_it
-                // TODO: string(string_view()) is counter-productive for performance
-                //       figure out how to do it with Hash::is_transparent and KeyEqual::is_transparent
-                //       c.f. https://en.cppreference.com/w/cpp/container/unordered_map/find
-                size_t keyword_id = db->useflags.add_flag(string_view(start_it, end_it));
-                keywords.insert(make_pair(keyword_id, testing));
+            if(word != 1)
+                throw runtime_error("* has been used in keywords but is not first");
 
-                // reset the iterators and the state boolean
-                start_it = end_it == keywords_str.end() ?  end_it : end_it + 1;
-                testing = false;
-                found_keyword = false;
-            }
-            else end_it++;
+            if (type == KeywordType::EBUILD and state != KeywordStates::State::BROKEN)
+                throw runtime_error("* is not accepted in ebuilds");
+
+            keyword_states.everything_else = state;
         }
+        else if(keyword == "**")
+        {
+            if (type == KeywordType::EBUILD)
+                throw runtime_error("** is not accepted in ebuilds");
+
+            if(word != 1)
+                throw runtime_error("* has been used in keywords but is not first");
+
+            keyword_states.everything_else = KeywordStates::State::LIVE;
+        }
+        else keyword_states.explicitely_defined.emplace(db->useflags.get_flag_id(keyword), state);
+
+        word++;
     }
 
-    return keywords;
+    return keyword_states;
 }
 
 UseflagStates Parser::parse_useflags(const string_view &useflags_str, bool default_state, bool create_flag_ids)

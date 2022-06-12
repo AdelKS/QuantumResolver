@@ -64,8 +64,6 @@ void Repo::load_package_useflag_settings()
                 for(string_view line: read_file_lines(path))
                 {
                     const auto &[pkg_constraint, use_toggles] = db->parser.parse_pkguse_line(line);
-                    if(use_toggles.contains(db->useflags.get_flag_id("custom-cflags")))
-                        cout << "here!" << endl;
                     if(pkg_constraint.pkg_id != pkgs.npos) //TODO : deal with assigning unexisting useflags
                         pkgs[pkg_constraint.pkg_id].assign_useflag_states(pkg_constraint, use_toggles, use_type);
                 }

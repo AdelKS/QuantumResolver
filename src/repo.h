@@ -23,9 +23,7 @@ class Repo
 public:
     Repo(Database *db);
 
-    std::size_t get_useflag_id(const std::string_view &flag_str, bool create_ids);
     std::size_t get_pkg_id(const std::string_view &pkg_str);
-
     const std::string& get_pkg_groupname(std::size_t pkg_id);
 
     Package& operator [] (PackageID pkg_id);

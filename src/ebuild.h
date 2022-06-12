@@ -26,7 +26,6 @@ class Database;
 class Ebuild
 {
 public:
-    enum struct EbuildType {UNKNOWN, STABLE, TESTING, LIVE};
 
     Ebuild(std::string ver,
            Database *db);
@@ -88,7 +87,7 @@ protected:
     bool masked = false, installed = false, changed_use = false;
     bool parsed_metadata = false, parsed_deps = false, finalized_flag_states = false;
     std::filesystem::path ebuild_path, install_path;
-    EbuildType ebuild_type = EbuildType::UNKNOWN;
+    KeywordStates keywords;
 
     Dependencies bdeps, rdeps;
     std::unordered_map<std::string, std::string> ebuild_data;
