@@ -46,8 +46,8 @@ KeywordStates Parser::parse_keywords(string_view keywords_str, KeywordType type)
 
         if(prefix_to_state.contains(keyword[0]))
         {
-            keyword.remove_prefix(1);
             state = prefix_to_state.at(keyword[0]);
+            keyword.remove_prefix(1);
         }
 
         if(keyword == "*")

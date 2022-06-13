@@ -6,6 +6,7 @@
 #include "multikey_map.h"
 #include "misc_utils.h"
 #include "concepts.h"
+#include "src/parser.h"
 
 #include <unordered_set>
 #include <unordered_map>
@@ -126,23 +127,18 @@ public:
 protected:
     void populate_profile_flags();
 
-    void clear_globally_toggled_useflags();
-    void clear_iuse_implicit_flags();
-    void clear_hidden_expands();
-    void clear_normal_expands();
-    void clear_implicit_expands();
-    void clear_unprefixed_expands();
-
     void set_arch();
     void make_expand_hidden(std::size_t prefix_index, bool hidden);
     void make_expand_implicit(std::size_t prefix_index, bool implicit);
     void remove_expand(std::size_t prefix_index);
 
-    void handle_use_line(const std::vector<std::string_view>& flags);
-    void handle_iuse_implicit_line(const std::vector<std::string_view> &flags);
-    void handle_use_expand_line(std::string_view use_expand_type, const std::vector<std::string_view>& words);
+    void handle_use_line(std::string_view flags);
+    void handle_iuse_implicit_line(std::string_view flags);
+    void handle_use_expand_line(std::string_view use_expand_type, std::string_view words);
 
     void compare_with_portage_eq();
+
+    const static std::unordered_set<std::string> incremental_vars;
 
     MultiKeyMap<UseExpandType, UseExpandName, FlagName, FlagID> use_expand;
     // use_expand characterization, reachable with the prefix string, and with the flag ids connected to the prefix

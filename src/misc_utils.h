@@ -60,6 +60,13 @@ std::vector<std::pair<std::size_t, std::string_view>> split_string(const std::st
 
 std::unordered_set<std::size_t> get_activated_useflags(std::unordered_map<std::size_t, bool> flag_states);
 
+
+/// \brief finds the bash variables in 'str_view', i.e. of the form $foo and/or ${bar}
+/// \param str_view: the string on which to look for bash variables
+/// \returns unordered_map that maps plain variable name (without $ nor {}) to (start_pos, length) in the string_view
+/// \example "$foo ${bar}" -> { {"foo", {0, 4}}, {"bar", {5, 6}} }
+std::unordered_map<std::string, std::pair<std::size_t, std::size_t>> get_bash_vars(std::string_view str_view);
+
 std::string to_lower(std::string_view sv);
 std::string to_lower(std::string&& sv);
 

@@ -1,14 +1,20 @@
 #include "misc_utils.h"
 
 #include "database.h"
+#include "src/multikey_map.h"
+#include "src/named_vector.h"
 
+#include <bits/ranges_algo.h>
 #include <filesystem>
 #include <chrono>
+#include <fmt/color.h>
 #include <string_view>
 
 using namespace std::chrono;
 namespace fs = std::filesystem;
 using namespace std;
+
+const unordered_set<string> UseFlags::incremental_vars = {"USE", "USE_EXPAND", "USE_EXPAND_HIDDEN", "IUSE_IMPLICIT", "USE_EXPAND_IMPLICIT", "USE_EXPAND_UNPREFIXED"};
 
 UseFlags::UseFlags(Database *db) : db(db)
 {
@@ -139,36 +145,6 @@ const std::string& UseFlags::get_flag_name(const size_t &id) const
     return it->first;
 }
 
-void UseFlags::clear_globally_toggled_useflags()
-{
-    use.clear();
-}
-
-void UseFlags::clear_iuse_implicit_flags()
-{
-    throw runtime_error("Function not implemented");
-}
-
-void UseFlags::clear_hidden_expands()
-{
-    throw runtime_error("Function not implemented");
-}
-
-void UseFlags::clear_normal_expands()
-{
-    throw runtime_error("Function not implemented");
-}
-
-void UseFlags::clear_implicit_expands()
-{
-    throw runtime_error("Function not implemented");
-}
-
-void UseFlags::clear_unprefixed_expands()
-{
-    throw runtime_error("Function not implemented");
-}
-
 void UseFlags::make_expand_hidden(std::size_t prefix_index, bool hidden)
 {
     use_expand.object_from_index(prefix_index).hidden = hidden;
@@ -184,19 +160,20 @@ void UseFlags::remove_expand(std::size_t prefix_index)
     throw runtime_error("Function not implemented");
 }
 
-void UseFlags::handle_use_line(const vector<string_view> &flags)
+void UseFlags::handle_use_line(string_view flags)
 {
-    for(string_view flag_str_v: flags)
+    while(not flags.empty())
     {
+        string_view flag_str_v = get_next_word(flags);
         if(flag_str_v.starts_with('$'))
         {
             cout << "skipping " << flag_str_v << " in USE var" << endl;
             continue;
         }
 
-        if(flag_str_v == "-*")
-            clear_globally_toggled_useflags();
-        else if(flag_str_v.starts_with('-'))
+        assert(flag_str_v != "-*");
+
+        if(flag_str_v.starts_with('-'))
         {
             flag_str_v.remove_prefix(1);
             use.erase(get_flag_id(flag_str_v));
@@ -205,19 +182,20 @@ void UseFlags::handle_use_line(const vector<string_view> &flags)
     }
 }
 
-void UseFlags::handle_iuse_implicit_line(const vector<string_view> &flags)
+void UseFlags::handle_iuse_implicit_line(string_view flags)
 {
-    for(string_view flag_str_v: flags)
+    while(not flags.empty())
     {
+        string_view flag_str_v = get_next_word(flags);
         if(flag_str_v.starts_with('$'))
         {
             cout << "skipping " << flag_str_v << " in USE var" << endl;
             continue;
         }
 
-        if(flag_str_v == "-*")
-            clear_iuse_implicit_flags();
-        else if(flag_str_v.starts_with('-'))
+        assert(flag_str_v != "-*");
+
+        if(flag_str_v.starts_with('-'))
         {
             flag_str_v.remove_prefix(1);
             implicit_useflags.erase(get_flag_id(flag_str_v));
@@ -226,29 +204,19 @@ void UseFlags::handle_iuse_implicit_line(const vector<string_view> &flags)
     }
 }
 
-void UseFlags::handle_use_expand_line(string_view use_expand_type, const vector<string_view> &words)
+void UseFlags::handle_use_expand_line(string_view use_expand_type, string_view words)
 {
-    for(string_view value: words)
+    while(not words.empty())
     {
+        string_view value = get_next_word(words);
+
         if(value.starts_with('$'))
         {
             cout << "skipping " << value << " in var: " << use_expand_type << endl;
             continue;
         }
 
-        bool clear_list = value == "-*";
-        if(clear_list)
-        {
-            if(use_expand_type == "USE_EXPAND_UNPREFIXED")
-                clear_unprefixed_expands();
-            else if(use_expand_type == "USE_EXPAND_IMPLICIT")
-                clear_implicit_expands();
-            else if(use_expand_type == "USE_EXPAND")
-                clear_normal_expands();
-            else // "USE_EXPAND_HIDDEN"
-                clear_hidden_expands();
-            continue;
-        }
+        assert(value != "-*");
 
         bool remove_value = value.starts_with('-');
         if(remove_value)
@@ -307,6 +275,8 @@ UseExpandType UseFlags::get_expand_type_from_expand_id(ExpandID expand_id) const
 
 void UseFlags::populate_profile_flags()
 {
+    NamedVector<string> make_default_vars;
+    unordered_set<string> additionnal_vars;
 
     for(const auto& profile_path : flatenned_profiles_tree)
     {
@@ -331,39 +301,61 @@ void UseFlags::populate_profile_flags()
 //            cout << line << endl;
 //        cout << "+++++++++++++++ END OF FILE CONTENT +++++++++++++++" << endl;
 
-        for(auto& [var, values_line]: read_quoted_vars(make_path))
+        for(auto&& [var, values_line]: read_quoted_vars(make_path))
         {
-            vector<string_view> words;
+            for(const auto& [bash_var_name, location]: get_bash_vars(values_line))
             {
-//                    cout << "------------" << endl;
-//                    cout << "Variable: " << var << endl;
-//                    cout << "Values: " << endl;
-                string_view values_line_view(values_line);
-                while(not values_line_view.empty())
+                const auto& [pos, length] = location;
+                if(not make_default_vars.contains(bash_var_name))
                 {
-                    words.push_back(get_next_word(values_line_view));
-//                        cout << words.back() << " ; ";
+                    fmt::print("Using empty variable: {}", bash_var_name);
+                    values_line.erase(pos, length);
                 }
-//                    cout << endl;
+                else values_line.replace(pos, length, make_default_vars[bash_var_name]);
             }
 
+            size_t index = make_default_vars.index_of(var);
+            if(index != make_default_vars.npos)
+            {
+                if(incremental_vars.contains(var))
+                   make_default_vars[var] += " " + values_line;
+                else make_default_vars[var] = std::move(values_line);
+            }
+            else make_default_vars.push_back(std::move(values_line), std::move(var));
+        }
+
+        // optimize away '-*' in incremental vars: remove everything that precedes it
+        for(const string& inc_var: incremental_vars)
+        {
+            size_t inc_var_index = make_default_vars.index_of(inc_var);
+            if(inc_var_index == make_default_vars.npos)
+                continue;
+
+            size_t minus_star_pos = make_default_vars[inc_var_index].find("-*");
+            if(minus_star_pos != string::npos)
+                make_default_vars[inc_var_index].erase(0, minus_star_pos+2);
+        }
+
+        for(size_t i = 0 ; i < make_default_vars.size(); i++)
+        {
+            string var = make_default_vars.name_of(i);
+            const string& values_line = make_default_vars[i];
             if(var == "USE")
-                handle_use_line(words);
+                handle_use_line(values_line);
             else if(var == "USE_EXPAND_UNPREFIXED" or
                     var == "USE_EXPAND_IMPLICIT" or
                     var == "USE_EXPAND" or
                     var == "USE_EXPAND_HIDDEN")
-                handle_use_expand_line(var, words);
+                handle_use_expand_line(var, values_line);
             else if(var == "IUSE_IMPLICIT")
-                handle_iuse_implicit_line(words);
+                handle_iuse_implicit_line(values_line);
             else
             {
-                size_t expand_index = use_expand.npos;
                 bool found_use_expand_values = var.starts_with("USE_EXPAND_VALUES_");
                 if(found_use_expand_values)
                     var = var.substr(string("USE_EXPAND_VALUES_").size());
 
-                expand_index = use_expand.index_from_key(UseExpandName(var));
+                size_t expand_index = use_expand.index_from_key(UseExpandName(var));
 
                 if(expand_index == use_expand.npos)
                 {
@@ -373,8 +365,10 @@ void UseFlags::populate_profile_flags()
                 }
 
                 const UseExpandType expand_type = use_expand.object_from_index(expand_index);
-                for(string_view& use_expand_flag_tail: words)
+                string_view values_line_view(values_line);
+                while(not values_line_view.empty())
                 {
+                    string_view use_expand_flag_tail = get_next_word(values_line_view);
                     if(use_expand_flag_tail.starts_with('-'))
                         throw runtime_error("Wrongly using " + var + " as incremental variable as it contains " + string(use_expand_flag_tail));
 
@@ -398,10 +392,11 @@ void UseFlags::populate_profile_flags()
                     if(expand_type.hidden)
                         hidden_useflags.insert(flag_id);
                 }
-
             }
-
         }
+
+
+
 
     }
 

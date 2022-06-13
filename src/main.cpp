@@ -17,7 +17,13 @@ int main(int argc, char *argv[])
 //        input.push_back("status");
 //        input.push_back("sys-devel/gcc");
 
+        auto start = high_resolution_clock::now();
         CommandLineInterface cli(input);
+        auto end = high_resolution_clock::now();
+
+        cout << "#####################################################" << endl;
+        cout << "Total time : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
+
     }
     catch(runtime_error &err)
     {

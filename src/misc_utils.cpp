@@ -305,6 +305,37 @@ unordered_set<size_t> get_activated_useflags(unordered_map<size_t, bool> flag_st
     return activated_flags;
 }
 
+std::unordered_map<string, pair<size_t, size_t>> get_bash_vars(std::string_view str_view)
+{
+    std::unordered_map<string, pair<size_t, size_t>> bash_vars;
+
+    size_t start_pos = str_view.find('$');
+    while(start_pos != string_view::npos)
+    {
+        str_view.remove_prefix(start_pos + 1);
+
+        if(str_view.size() <= 1)
+            throw runtime_error("syntax error in make.defaults");
+
+        size_t length = 0;
+        bool found_bkt = str_view[0] == '{';
+        if(found_bkt)
+        {
+            str_view.remove_prefix(1);
+            length = str_view.find('}');
+            if(length == str_view.npos)
+                throw runtime_error("cannot find closing } to bash variable");
+        }
+        else length = str_view.find(' ');
+
+        bash_vars.emplace(string(str_view.substr(0, length)),
+                               make_pair(start_pos, length + 1 + 2*found_bkt));
+
+        start_pos = str_view.find('$');
+    }
+    return bash_vars;
+}
+
 vector<fs::path> get_profiles_tree()
 {
     vector<fs::path> profile_tree = {"/etc/portage/profile", "/etc/portage"};

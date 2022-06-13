@@ -26,12 +26,17 @@ public:
     const_iterator cbegin() const {return objects.cbegin();} ;
     const_iterator cend() const {return objects.cend();};
 
-    std::size_t id_of(const std::string_view &name) const
+    std::size_t index_of(const std::string_view &name) const
     {
         auto it = name_to_index.find(name);
         if( it != name_to_index.end())
             return it->second;
         return npos;
+    }
+
+    const std::string& name_of(size_t index)
+    {
+        return index_to_name[index];
     }
 
     bool contains(std::string_view name)
@@ -43,9 +48,9 @@ public:
     {
         std::size_t index = objects.size();
         objects.push_back(std::move(object));
-        objects.back().set_id(index);
 
-        name_to_index[std::move(name)] = index;
+        name_to_index[name] = index;
+        index_to_name.push_back(std::move(name));
         return index;
     }
 
@@ -80,6 +85,7 @@ protected:
 
     std::vector<Object> objects;
     std::unordered_map<std::string, std::size_t, string_hash, std::equal_to<>> name_to_index;
+    std::vector<std::string> index_to_name;
 };
 
 #endif // NAMED_VECTOR_H

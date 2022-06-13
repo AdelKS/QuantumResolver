@@ -69,12 +69,12 @@ const NamedVector<Ebuild> &Package::get_ebuilds() const
 
 size_t Package::ebuild_id_of(const std::string &version)
 {
-    return ebuilds.id_of(version);
+    return ebuilds.index_of(version);
 }
 
 Ebuild &Package::operator[](const string &ver)
 {
-    size_t index = ebuilds.id_of(ver);
+    size_t index = ebuilds.index_of(ver);
     if(index == ebuilds.npos)
         throw runtime_error("version " + ver + "is not available in " + pkg_groupname);
     else return ebuilds[index];

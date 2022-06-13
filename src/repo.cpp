@@ -96,7 +96,7 @@ void Repo::load_ebuilds(const std::string &path)
         const string &pkg_ver = pkg_namever.substr(split_pos+1);
 
         const string &pkg_category_name = pkg_category + "/" + pkg_name;
-        size_t pkg_id = pkgs.id_of(pkg_category_name);
+        size_t pkg_id = pkgs.index_of(pkg_category_name);
         if(pkg_id == pkgs.npos)
         {
             pkg_id = pkgs.push_back(Package(pkg_category_name, db), pkg_category_name);
@@ -138,7 +138,7 @@ void Repo::load_installed_pkgs()
             const string &pkg_name = pkg_namever.substr(0, split_pos);
             const string &pkg_ver = pkg_namever.substr(split_pos+1);
 
-            const size_t &pkg_id = pkgs.id_of(pkg_category + "/" + pkg_name);
+            const size_t &pkg_id = pkgs.index_of(pkg_category + "/" + pkg_name);
             if(pkg_id != pkgs.npos)
                 pkgs[pkg_id].add_installed_version(pkg_ver, pkg_namever_entry);
             else cout << pkg_category + "/" + pkg_name + " not in the ::gentoo repository" << endl;
@@ -152,7 +152,7 @@ void Repo::load_installed_pkgs()
 
 size_t Repo::get_pkg_id(const string_view &pkg_str)
 {
-    return pkgs.id_of(pkg_str);
+    return pkgs.index_of(pkg_str);
 }
 
 Package& Repo::operator [] (PackageID pkg_id)
