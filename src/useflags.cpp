@@ -160,47 +160,21 @@ void UseFlags::remove_expand(std::size_t prefix_index)
     throw runtime_error("Function not implemented");
 }
 
-void UseFlags::handle_use_line(string_view flags)
+void UseFlags::handle_use_line(string_view flags, unordered_set<FlagID>& container)
 {
     while(not flags.empty())
     {
         string_view flag_str_v = get_next_word(flags);
-        if(flag_str_v.starts_with('$'))
-        {
-            cout << "skipping " << flag_str_v << " in USE var" << endl;
-            continue;
-        }
 
+        assert(not flag_str_v.starts_with('$'));
         assert(flag_str_v != "-*");
 
         if(flag_str_v.starts_with('-'))
         {
             flag_str_v.remove_prefix(1);
-            use.erase(get_flag_id(flag_str_v));
+            container.erase(get_flag_id(flag_str_v));
         }
-        else use.insert(add_flag(flag_str_v));
-    }
-}
-
-void UseFlags::handle_iuse_implicit_line(string_view flags)
-{
-    while(not flags.empty())
-    {
-        string_view flag_str_v = get_next_word(flags);
-        if(flag_str_v.starts_with('$'))
-        {
-            cout << "skipping " << flag_str_v << " in USE var" << endl;
-            continue;
-        }
-
-        assert(flag_str_v != "-*");
-
-        if(flag_str_v.starts_with('-'))
-        {
-            flag_str_v.remove_prefix(1);
-            implicit_useflags.erase(get_flag_id(flag_str_v));
-        }
-        else implicit_useflags.insert(add_flag(flag_str_v));
+        else container.insert(add_flag(flag_str_v));
     }
 }
 
@@ -275,8 +249,10 @@ UseExpandType UseFlags::get_expand_type_from_expand_id(ExpandID expand_id) const
 
 void UseFlags::populate_profile_flags()
 {
-    NamedVector<string> make_default_vars;
-    unordered_set<string> additionnal_vars;
+    NamedVector<string> non_incremental_var_values;
+    {
+    // scope down incremental_var_values
+    NamedVector<string> incremental_var_values;
 
     for(const auto& profile_path : flatenned_profiles_tree)
     {
@@ -294,7 +270,7 @@ void UseFlags::populate_profile_flags()
         if(not fs::is_regular_file(make_path))
             continue;
 
-//        cout<< "#############################" << endl;
+//        cout << "#############################" << endl;
 //        cout << make_path.string() << endl;
 //        cout << "+++++++++++++++ START OF FILE CONTENT +++++++++++++++" << endl;
 //        for(const auto &line: read_file_lines(make_path))
@@ -303,100 +279,102 @@ void UseFlags::populate_profile_flags()
 
         for(auto&& [var, values_line]: read_quoted_vars(make_path))
         {
+            bool incremental = incremental_vars.contains(var);
+            NamedVector<string> &container_to_fill = incremental ?
+                                                     incremental_var_values :
+                                                     non_incremental_var_values;
+
             for(const auto& [bash_var_name, location]: get_bash_vars(values_line))
             {
                 const auto& [pos, length] = location;
-                if(not make_default_vars.contains(bash_var_name))
+                if(incremental_var_values.contains(bash_var_name))
+                    values_line.replace(pos, length, incremental_var_values[bash_var_name]);
+                else if(non_incremental_var_values.contains(bash_var_name))
+                    values_line.replace(pos, length, non_incremental_var_values[bash_var_name]);
+                else
                 {
                     fmt::print("Using empty variable: {}", bash_var_name);
                     values_line.erase(pos, length);
                 }
-                else values_line.replace(pos, length, make_default_vars[bash_var_name]);
             }
 
-            size_t index = make_default_vars.index_of(var);
-            if(index != make_default_vars.npos)
+            size_t index = container_to_fill.index_of(var);
+            if(index != container_to_fill.npos)
             {
-                if(incremental_vars.contains(var))
-                   make_default_vars[var] += " " + values_line;
-                else make_default_vars[var] = std::move(values_line);
+                if(incremental)
+                   container_to_fill[var] += " " + values_line;
+                else container_to_fill[var] = std::move(values_line);
             }
-            else make_default_vars.push_back(std::move(values_line), std::move(var));
+            else container_to_fill.push_back(std::move(values_line), std::move(var));
         }
+    }
 
+    for(size_t i = 0 ; i < incremental_var_values.size(); i++)
+    {
         // optimize away '-*' in incremental vars: remove everything that precedes it
-        for(const string& inc_var: incremental_vars)
-        {
-            size_t inc_var_index = make_default_vars.index_of(inc_var);
-            if(inc_var_index == make_default_vars.npos)
-                continue;
+        size_t minus_star_pos = incremental_var_values[i].find("-*");
+        if(minus_star_pos != string::npos)
+            incremental_var_values[i].erase(0, minus_star_pos+2);
 
-            size_t minus_star_pos = make_default_vars[inc_var_index].find("-*");
-            if(minus_star_pos != string::npos)
-                make_default_vars[inc_var_index].erase(0, minus_star_pos+2);
+        string var = incremental_var_values.name_of(i);
+        const string& values_line = incremental_var_values[i];
+        if(var == "USE")
+            handle_use_line(values_line, use);
+        else if(var == "IUSE_IMPLICIT")
+            handle_use_line(values_line, implicit_useflags);
+        else if(var.starts_with("USE_EXPAND"))
+            handle_use_expand_line(var, values_line);
+        else assert(false);
+    }
+
+    }
+
+    for(size_t i = 0 ; i < non_incremental_var_values.size(); i++)
+    {
+        string var = non_incremental_var_values.name_of(i);
+        const string& values_line = non_incremental_var_values[i];
+
+        bool found_use_expand_values = var.starts_with("USE_EXPAND_VALUES_");
+        if(found_use_expand_values)
+            var = var.substr(string("USE_EXPAND_VALUES_").size());
+
+        size_t expand_index = use_expand.index_from_key(UseExpandName(var));
+
+        if(expand_index == use_expand.npos)
+        {
+            if(found_use_expand_values)
+                throw runtime_error("Found USE_EXPAND_VALUES_" + var + " without prior definition of " + var);
+            continue;
         }
 
-        for(size_t i = 0 ; i < make_default_vars.size(); i++)
+        const UseExpandType expand_type = use_expand.object_from_index(expand_index);
+        string_view values_line_view(values_line);
+        while(not values_line_view.empty())
         {
-            string var = make_default_vars.name_of(i);
-            const string& values_line = make_default_vars[i];
-            if(var == "USE")
-                handle_use_line(values_line);
-            else if(var == "USE_EXPAND_UNPREFIXED" or
-                    var == "USE_EXPAND_IMPLICIT" or
-                    var == "USE_EXPAND" or
-                    var == "USE_EXPAND_HIDDEN")
-                handle_use_expand_line(var, values_line);
-            else if(var == "IUSE_IMPLICIT")
-                handle_iuse_implicit_line(values_line);
-            else
-            {
-                bool found_use_expand_values = var.starts_with("USE_EXPAND_VALUES_");
-                if(found_use_expand_values)
-                    var = var.substr(string("USE_EXPAND_VALUES_").size());
+            string_view use_expand_flag_tail = get_next_word(values_line_view);
+            if(use_expand_flag_tail.starts_with('-'))
+                throw runtime_error("Wrongly using " + var + " as incremental variable as it contains " + string(use_expand_flag_tail));
 
-                size_t expand_index = use_expand.index_from_key(UseExpandName(var));
+            string use_flag_str;
+            if(expand_type.unprefixed)
+                use_flag_str = use_expand_flag_tail;
+            else use_flag_str = to_lower(var) + "_" + string(use_expand_flag_tail);
 
-                if(expand_index == use_expand.npos)
-                {
-                    if(found_use_expand_values)
-                        throw runtime_error("Found USE_EXPAND_VALUES_" + var + " without prior definition of " + var);
-                    continue;
-                }
+            size_t flag_id = add_flag(use_flag_str);
+            use_expand.assign_key(expand_index, flag_id);
+            use_expand.assign_key(expand_index, use_flag_str);
 
-                const UseExpandType expand_type = use_expand.object_from_index(expand_index);
-                string_view values_line_view(values_line);
-                while(not values_line_view.empty())
-                {
-                    string_view use_expand_flag_tail = get_next_word(values_line_view);
-                    if(use_expand_flag_tail.starts_with('-'))
-                        throw runtime_error("Wrongly using " + var + " as incremental variable as it contains " + string(use_expand_flag_tail));
+            expand_useflags.insert(flag_id);
 
-                    string use_flag_str;
-                    if(expand_type.unprefixed)
-                        use_flag_str = use_expand_flag_tail;
-                    else use_flag_str = to_lower(var) + "_" + string(use_expand_flag_tail);
+            if(not found_use_expand_values)
+                use.insert(flag_id);
 
-                    size_t flag_id = add_flag(use_flag_str);
-                    use_expand.assign_key(expand_index, flag_id);
-                    use_expand.assign_key(expand_index, use_flag_str);
+            if(expand_type.implicit)
+                implicit_useflags.insert(flag_id);
 
-                    expand_useflags.insert(flag_id);
-
-                    if(not found_use_expand_values)
-                        use.insert(flag_id);
-
-                    if(expand_type.implicit)
-                        implicit_useflags.insert(flag_id);
-
-                    if(expand_type.hidden)
-                        hidden_useflags.insert(flag_id);
-                }
-            }
+            if(expand_type.hidden)
+                hidden_useflags.insert(flag_id);
         }
-
-
-
 
     }
 

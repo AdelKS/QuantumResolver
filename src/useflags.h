@@ -132,7 +132,7 @@ protected:
     void make_expand_implicit(std::size_t prefix_index, bool implicit);
     void remove_expand(std::size_t prefix_index);
 
-    void handle_use_line(std::string_view flags);
+    void handle_use_line(std::string_view flags, std::unordered_set<FlagID> &container);
     void handle_iuse_implicit_line(std::string_view flags);
     void handle_use_expand_line(std::string_view use_expand_type, std::string_view words);
 
