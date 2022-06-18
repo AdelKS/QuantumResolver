@@ -14,7 +14,7 @@ using namespace std::chrono;
 namespace fs = std::filesystem;
 using namespace std;
 
-const unordered_set<string> UseFlags::incremental_vars = {"USE", "USE_EXPAND", "USE_EXPAND_HIDDEN", "IUSE_IMPLICIT", "USE_EXPAND_IMPLICIT", "USE_EXPAND_UNPREFIXED"};
+const unordered_set<string> UseFlags::incremental_vars = {"USE", "USE_EXPAND", "USE_EXPAND_HIDDEN", "IUSE_IMPLICIT", "USE_EXPAND_IMPLICIT", "USE_EXPAND_UNPREFIXED", "ACCEPT_KEYWORDS"};
 
 UseFlags::UseFlags(Database *db) : db(db)
 {
@@ -322,6 +322,8 @@ void UseFlags::populate_profile_flags()
             handle_use_line(values_line, use);
         else if(var == "IUSE_IMPLICIT")
             handle_use_line(values_line, implicit_useflags);
+        else if(var == "ACCEPT_KEYWORDS")
+            accepted_keywords = db->parser.parse_keywords(values_line, Parser::KeywordType::USER);
         else if(var.starts_with("USE_EXPAND"))
             handle_use_expand_line(var, values_line);
         else assert(false);

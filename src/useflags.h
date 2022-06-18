@@ -154,6 +154,9 @@ protected:
 
     std::size_t current_arch = npos;
     std::string current_arch_name;
+
+    KeywordStates accepted_keywords;
+
     Database *db;
 };
 
