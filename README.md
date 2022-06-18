@@ -25,7 +25,7 @@ quantum status [atom]
 where `[atom]` is for example `sys-devel/gcc` or `"=sys-devel/gcc-10.3*"`. It does a mixture between `equery y [atom]` and `emerge -qpvO [atom]`:
 - Outputs the state of the flags for each version that matches `[atom]` if it were to be (re)emerged.
 - Shows any eventual changed use with the same color code as `emerge`.
-- Shows the keywording of the matched ebuilds (with the same code as `equery`) and if they are accepted (with a '✓' or '𐄂')
+- Shows the keywording of the matched ebuilds (with the same code as `equery`) on the arch you are running, and if they are accepted (with a '✓' or '𐄂')
 
 The idea is to have it display a table view (will be implemented) that gives all the necessary information. This is only a intermediary step that is needed to implement a proper dependency resolver: it needs to know of flag changes, installed packages, flag states... etc.
 
