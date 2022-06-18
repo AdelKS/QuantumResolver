@@ -73,7 +73,7 @@ struct Toggle
 
 struct KeywordStates
 {
-    enum struct State {UNDEFINED, BROKEN, STABLE, TESTING, LIVE};
+    enum struct State {UNDEFINED = 0, BROKEN, STABLE, TESTING, LIVE};
     std::unordered_map<ArchID, State> explicitely_defined;
     State everything_else = State::UNDEFINED;
 

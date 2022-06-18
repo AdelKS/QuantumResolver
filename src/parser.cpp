@@ -70,7 +70,13 @@ KeywordStates Parser::parse_keywords(string_view keywords_str, KeywordType type)
 
             keyword_states.everything_else = KeywordStates::State::LIVE;
         }
-        else keyword_states.explicitely_defined.emplace(db->useflags.get_flag_id(keyword), state);
+        else
+        {
+            size_t arch_id = db->useflags.add_flag(keyword);
+            if(not keyword_states.explicitely_defined.contains(arch_id) or
+                    keyword_states.explicitely_defined[arch_id] < state)
+                keyword_states.explicitely_defined[arch_id] = state;
+        }
 
         word++;
     }
