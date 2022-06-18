@@ -1,5 +1,6 @@
 #include "misc_utils.h"
 
+#include <filesystem>
 #include <iostream>
 #include <cstring>
 #include <fstream>
@@ -55,6 +56,16 @@ size_t pkg_namever_split_pos(const string_view &name_ver)
         return before_last_dash;
     else return last_dash;
 
+}
+
+void print_file_contents(const fs::path& path)
+{
+    cout << "#############################" << endl;
+    cout << path.string() << endl;
+    cout << "+++++++++++++++ START OF FILE CONTENT +++++++++++++++" << endl;
+    for(const auto &line: read_file_lines(path))
+        cout << line << endl;
+    cout << "+++++++++++++++ END OF FILE CONTENT +++++++++++++++" << endl;
 }
 
 vector<pair<size_t, string_view>> split_string(const string_view &str_view,

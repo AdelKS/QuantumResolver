@@ -3,6 +3,7 @@
 #include "misc_utils.h"
 
 #include "database.cpp"
+#include "src/parser.h"
 #include "useflags.cpp"
 
 using namespace std;
@@ -28,7 +29,7 @@ Ebuild::Ebuild(string ver,
     eversion(std::move(ver)), db(db)
 {
     if(eversion.is_live())
-        keywords.everything_else = KeywordStates::State::LIVE;
+        keywords.everything_else = Keywords::State::LIVE;
 }
 
 void Ebuild::set_ebuild_path(std::filesystem::path path)
@@ -106,6 +107,12 @@ void Ebuild::parse_metadata()
         use += (db->useflags.get_use() & iuse_effective); // + use is to keep the default states from IUSE, e.g. +flag -flag2
         use_force = db->useflags.get_use_force() & iuse_effective;
         use_mask = db->useflags.get_use_mask() & iuse_effective;
+
+        auto use_mask_strs = db->useflags.to_flag_names(use_mask);
+
+        if(eversion.string() == "11.3.0" and
+                db->repo.get_pkg_groupname(pkg_id) == "sys-devel/gcc"                )
+            cout << "here!" << endl;
     }
 
     if(ebuild_data.contains("SLOT"))
@@ -124,9 +131,12 @@ void Ebuild::parse_metadata()
     }
 
     if(ebuild_data.contains("KEYWORDS"))
-        keywords = db->parser.parse_keywords(ebuild_data["KEYWORDS"], Parser::KeywordType::EBUILD);
+    {
+        keywords = db->parser.parse_keywords(ebuild_data["KEYWORDS"], Parser::KeywordType::KEYWORDS);
+        accept_keywords(db->useflags.get_accepted_keywords());
+    }
 
-    if(keywords.get_state(db->useflags.get_arch_id()) == KeywordStates::State::STABLE)
+    if(keywords.get_keyword(db->useflags.get_arch_id()) == Keywords::State::STABLE)
     {
         use_force += db->useflags.get_use_stable_force() & iuse_effective;
         use_mask += db->useflags.get_use_stable_mask() & iuse_effective;
@@ -193,6 +203,11 @@ void Ebuild::add_iuse_flags(std::unordered_map<std::size_t, bool> useflags_and_d
         add_iuse_flag(flag_id, flag_state);
 }
 
+void Ebuild::accept_keywords(const Keywords& accept_these_keywords)
+{
+    keyword_accepted = keywords.respects(db->useflags.get_arch_id(), accept_these_keywords);
+}
+
 void Ebuild::assign_useflag_state(size_t flag_id, bool state, const FlagAssignType &assign_type)
 {
     if(not parsed_metadata)
@@ -201,22 +216,27 @@ void Ebuild::assign_useflag_state(size_t flag_id, bool state, const FlagAssignTy
     if(not iuse_effective.contains(flag_id))
         return;
 
+    if(eversion.string() == "11.3.0" and
+            db->repo.get_pkg_groupname(pkg_id) == "sys-devel/gcc" and
+            db->useflags.get_flag_name(flag_id) == "pch")
+        cout << "here!" << endl;
+
     if(assign_type == FlagAssignType::DIRECT or
-            (assign_type == FlagAssignType::STABLE_DIRECT and keywords.get_state(db->useflags.get_arch_id()) == KeywordStates::State::STABLE))
+            (assign_type == FlagAssignType::STABLE_DIRECT and keywords.get_keyword(db->useflags.get_arch_id()) == Keywords::State::STABLE))
     {
         if(state)
             use.insert(flag_id);
         else use.erase(flag_id);
     }
     else if(assign_type == FlagAssignType::FORCE or
-            (assign_type == FlagAssignType::STABLE_FORCE and keywords.get_state(db->useflags.get_arch_id()) == KeywordStates::State::STABLE))
+            (assign_type == FlagAssignType::STABLE_FORCE and keywords.get_keyword(db->useflags.get_arch_id()) == Keywords::State::STABLE))
     {
         if(state)
             use_force.insert(flag_id);
         else use_force.erase(flag_id);
     }
     else if(assign_type == FlagAssignType::MASK or
-            (assign_type == FlagAssignType::STABLE_MASK and keywords.get_state(db->useflags.get_arch_id()) == KeywordStates::State::STABLE))
+            (assign_type == FlagAssignType::STABLE_MASK and keywords.get_keyword(db->useflags.get_arch_id()) == Keywords::State::STABLE))
     {
         if(state)
             use_mask.insert(flag_id);
@@ -260,6 +280,13 @@ std::unordered_set<FlagID> Ebuild::get_enforced_flags()
     /// \brief returns the set of flags that are either masked or forced
     if(not finalized_flag_states)
         finalize_flag_states();
+
+    auto use_force_strs = db->useflags.to_flag_names(use_force);
+    auto use_mask_strs = db->useflags.to_flag_names(use_mask);
+
+    if(eversion.string() == "11.3.0" and
+            db->repo.get_pkg_groupname(pkg_id) == "sys-devel/gcc")
+        cout << "here!" << endl;
 
     return use_force + use_mask;
 }
@@ -320,35 +347,15 @@ void Ebuild::assign_useflag_states(const UseflagStates &useflag_states, const Fl
         assign_useflag_state(flag_id, flag_state, assign_type);
 }
 
-void Ebuild::set_id(size_t id)
-{
-    this->id = id;
-}
-
-size_t Ebuild::get_id()
-{
-    return id;
-}
-
-void Ebuild::set_pkg_id(size_t id)
-{
-    pkg_id = id;
-}
-
-size_t Ebuild::get_pkg_id()
-{
-    return pkg_id;
-}
-
 bool Ebuild::operator <(const Ebuild &other)
 {
     assert(pkg_id == other.pkg_id); // Make sure we are comparing ebuilds of the same package
     return eversion < other.eversion;
 }
 
-const EbuildVersion &Ebuild::get_version()
+Keywords::State Ebuild::get_arch_keyword() const
 {
-    return eversion;
+    return keywords.get_keyword(db->useflags.get_arch_id());
 }
 
 void Ebuild::add_deps(Dependencies deps, DependencyType dep_type)

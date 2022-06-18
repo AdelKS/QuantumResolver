@@ -37,9 +37,12 @@ protected:
     void parse_ebuild_metadata();
     void parse_deps();
 
+    void load_package_accept_keywords();
     void load_package_useflag_settings();
+    void load_system_packages();
 
     NamedVector<Package> pkgs;
+    std::unordered_set<PackageID> selected_pkgs, system_pkgs;
 
     Database *db;
 

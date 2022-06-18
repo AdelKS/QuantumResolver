@@ -8,3 +8,6 @@ concept IntegerRange = std::ranges::common_range<Range> and std::is_same_v<std::
 
 template <class T, class... Ti>
 concept is_any_of = (std::is_same_v<T, Ti> or ...);
+
+template <class T>
+concept dependent_false_v = false;

@@ -124,6 +124,17 @@ void Package::assign_useflag_states(const PackageConstraint &constraint,
             ebuild.assign_useflag_states(useflag_states, assign_type);
 }
 
+void Package::accept_keywords(const PackageConstraint &constraint,
+                     const Keywords& accept_keywords)
+{
+    if(constraint.pkg_id != pkg_id)
+        throw runtime_error("Applying constraint to the wrong package");
+
+    for(auto &ebuild: ebuilds)
+        if(ebuild.respects_pkg_constraint(constraint))
+            ebuild.accept_keywords(accept_keywords);
+}
+
 Package::iterator Package::begin()
 {
     return ebuilds.begin();

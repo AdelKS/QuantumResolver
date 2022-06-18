@@ -1,7 +1,10 @@
 #pragma once
 
 #include "concepts.h"
+#include "src/parser.h"
 #include "useflags.h"
+#include <fmt/color.h>
+#include <unordered_map>
 
 template <IntegerRange Range1,
           IntegerRange Range2 = std::vector<std::size_t>,
@@ -100,4 +103,23 @@ pretty_format_flags(
     }
 
     return pretty_stuff;
+}
+
+inline std::string format_keyword(Keywords::State keyword_state)
+{
+    const static std::unordered_map<Keywords::State, std::string> state_to_string =
+    {
+        {Keywords::State::BROKEN, fmt::format(fg(gentoo_red), "*")},
+        {Keywords::State::UNDEFINED, fmt::format(fg(fmt::color::black), "o")},
+        {Keywords::State::LIVE, fmt::format(fg(fmt::color::black), "o")},
+        {Keywords::State::STABLE, fmt::format(fg(gentoo_green), "+")},
+        {Keywords::State::TESTING, fmt::format(fg(fmt::color::dark_orange), "~")},
+    };
+
+    return state_to_string.at(keyword_state);
+}
+
+inline std::string format_bool(bool bl)
+{
+    return bl ? fmt::format(fg(gentoo_green) | fmt::emphasis::bold, "✓") : fmt::format(fg(gentoo_red) | fmt::emphasis::bold, "𐄂");
 }

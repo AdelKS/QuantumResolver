@@ -3,6 +3,7 @@
 #include "database.h"
 #include "parser.h"
 #include "src/useflags.h"
+#include <stdexcept>
 
 using namespace std;
 
@@ -22,7 +23,7 @@ UseflagStates Parser::parse_useflags(const vector<string> &useflag_lines, bool d
     return useflag_states;
 }
 
-KeywordStates Parser::parse_keywords(string_view keywords_str, KeywordType type)
+Keywords Parser::parse_keywords(string_view keywords_str, KeywordType type)
 {
     /* Parses the keywords from a KEYWORDS="..." string
      * e.g. it can receive "~keyword1 keyword2 keyword3" as an input
@@ -30,18 +31,24 @@ KeywordStates Parser::parse_keywords(string_view keywords_str, KeywordType type)
      * the bool is true when testing, i.e ~keyword
      * */
 
-    static const unordered_map<char, KeywordStates::State> prefix_to_state =
-    { {'-', KeywordStates::State::BROKEN}, {'~', KeywordStates::State::TESTING} };
+    static const unordered_map<char, Keywords::State> prefix_to_state =
+    { {'-', Keywords::State::BROKEN}, {'~', Keywords::State::TESTING} };
 
-    KeywordStates keyword_states;
+    // these equalities are important, static assert them to make sure they don't
+    // get changed inadvertently
+    static_assert(Keywords::State::BROKEN == Keywords::State::REFUSE);
+    static_assert(Keywords::State::TESTING == Keywords::State::ACCEPT_TESTING);
+    static_assert(Keywords::State::STABLE == Keywords::State::ACCEPT_STABLE);
+
+    Keywords keyword_states;
 
     size_t word = 1;
     while(not keywords_str.empty())
     {
-        if(keyword_states.everything_else == KeywordStates::State::LIVE)
-            throw runtime_error("Settings keywords after ** is useless");
+        if(keyword_states.everything_else == Keywords::State::LIVE)
+            throw runtime_error("Settings keywords after ** in ACCEPT_KEYWORDS is useless");
 
-        KeywordStates::State state = KeywordStates::State::STABLE;
+        Keywords::State state = Keywords::State::ACCEPT_STABLE;
         string_view keyword = get_next_word(keywords_str); // get_next_word throws if the returned string_view is empty
 
         if(prefix_to_state.contains(keyword[0]))
@@ -53,28 +60,28 @@ KeywordStates Parser::parse_keywords(string_view keywords_str, KeywordType type)
         if(keyword == "*")
         {
             if(word != 1)
-                throw runtime_error("* has been used in keywords but is not first");
+                throw runtime_error("* has been used in ACCEPT_KEYWORDS but is not first");
 
-            if (type == KeywordType::EBUILD and state != KeywordStates::State::BROKEN)
-                throw runtime_error("* is not accepted in ebuilds");
+            if (type == KeywordType::KEYWORDS and state != Keywords::State::BROKEN)
+                throw runtime_error("* is not accepted in KEYWORDS");
 
             keyword_states.everything_else = state;
         }
         else if(keyword == "**")
         {
-            if (type == KeywordType::EBUILD)
-                throw runtime_error("** is not accepted in ebuilds");
+            if (type == KeywordType::KEYWORDS)
+                throw runtime_error("** is not accepted in KEYWORDS");
 
             if(word != 1)
-                throw runtime_error("* has been used in keywords but is not first");
+                throw runtime_error("** has been used in ACCEPT_KEYWORDS but is not first");
 
-            keyword_states.everything_else = KeywordStates::State::LIVE;
+            keyword_states.everything_else = Keywords::State::ACCEPT_EVERYTHING;
         }
         else
         {
             size_t arch_id = db->useflags.add_flag(keyword);
-            if(not keyword_states.explicitely_defined.contains(arch_id) or
-                    keyword_states.explicitely_defined[arch_id] < state)
+            if(not keyword_states.explicitely_defined.contains(arch_id)
+                or keyword_states.explicitely_defined[arch_id] <= state)
                 keyword_states.explicitely_defined[arch_id] = state;
         }
 
@@ -149,40 +156,12 @@ UseflagStates Parser::parse_useflags(const string_view &useflags_str, bool defau
 
 PkgUseToggles Parser::parse_pkguse_line(string_view pkguse_line)
 {
-    /* Parse a line that contains a pkg specification then flag toggles
-     * e.g. ">=app-misc/foo-1.2.3:0 +flag1 -flag2 flag3"
-     * */
+    return parse_pkg_settings<SettingsType::USEFLAGS>(pkguse_line);
+}
 
-    PackageConstraint pkg_constraint;
-    UseflagStates flag_states;
-
-    // remove eventual spurious spaces
-    skim_spaces_at_the_edges(pkguse_line);
-
-    if(pkguse_line.empty() or pkguse_line.starts_with('#'))
-        return make_pair(pkg_constraint, flag_states);
-
-    // find the first space that separates the package specification from the use flags
-    // e.g.      >=app-misc/foo-1.2.3 +foo -bar
-    //           first space here:   ^
-
-    auto first_space_char = pkguse_line.find(' ');
-    if(first_space_char == string_view::npos)
-        return make_pair(pkg_constraint, flag_states);
-
-    // create a view on the package constraint str ">=app-misc/foo-1.2.3" then parse it
-    string_view pkg_constraint_str_view(pkguse_line);
-    pkg_constraint_str_view.remove_suffix(pkguse_line.size() - first_space_char);
-
-    //pkg constraints cannot contain useflag constraints
-    pkg_constraint = parse_pkg_constraint(pkg_constraint_str_view);
-
-    // create a view on the useflags "+foo -bar" and parse it
-    string_view useflags_str_view(pkguse_line);
-    useflags_str_view.remove_prefix(pkg_constraint_str_view.size());
-    flag_states = parse_useflags(useflags_str_view, true, true);
-
-    return make_pair(pkg_constraint, flag_states);
+PkgAcceptkeywords Parser::parse_pkg_accept_keywords_line(std::string_view pkg_accept_keywords_line)
+{
+    return parse_pkg_settings<SettingsType::ACCEPT_KEYWORDS>(pkg_accept_keywords_line);
 }
 
 PackageDependency Parser::parse_pkg_dependency(string_view pkg_dep_str)
@@ -225,13 +204,12 @@ PackageDependency Parser::parse_pkg_dependency(string_view pkg_dep_str)
     return pkg_dependency;
 }
 
+/// \brief Parses package constraint strings
+/// \note it does not parse useflag deps nor slot rebuilding
+///       use parse_pkg_dependency for that
+/// \example receives "=app-misc/foo-1.2.3*:0"
 PackageConstraint Parser::parse_pkg_constraint(string_view pkg_constraint_str)
 {
-    /* Parses package constraint strings
-     * e.g. "=app-misc/foo-1.2.3*:0=[-flag1(-),!flag2?,flag3]
-     * allow_usedeps: allow having "[-flag1(-),!flag2?,flag3]" in the above example
-     * */
-
     string_view str(pkg_constraint_str);
 
     // Reset slot constraints to defaults and check if there is slot constraints

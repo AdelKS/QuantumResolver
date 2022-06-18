@@ -42,6 +42,8 @@ public:
                                const UseflagStates &useflag_states,
                                const FlagAssignType &assign_type = FlagAssignType::DIRECT);
 
+    void accept_keywords(const PackageConstraint &constraint, const Keywords& accept_keywords);
+
     std::vector<EbuildID> get_matching_ebuild_ids(const PackageConstraint &constraint);
 
     void set_installed_version(const std::string &version, const std::string &activated_useflags);

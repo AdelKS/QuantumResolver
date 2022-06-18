@@ -270,12 +270,7 @@ void UseFlags::populate_profile_flags()
         if(not fs::is_regular_file(make_path))
             continue;
 
-//        cout << "#############################" << endl;
-//        cout << make_path.string() << endl;
-//        cout << "+++++++++++++++ START OF FILE CONTENT +++++++++++++++" << endl;
-//        for(const auto &line: read_file_lines(make_path))
-//            cout << line << endl;
-//        cout << "+++++++++++++++ END OF FILE CONTENT +++++++++++++++" << endl;
+//        print_file_contents(make_path);
 
         for(auto&& [var, values_line]: read_quoted_vars(make_path))
         {
@@ -323,7 +318,7 @@ void UseFlags::populate_profile_flags()
         else if(var == "IUSE_IMPLICIT")
             handle_use_line(values_line, implicit_useflags);
         else if(var == "ACCEPT_KEYWORDS")
-            accepted_keywords = db->parser.parse_keywords(values_line, Parser::KeywordType::USER);
+            accepted_keywords = db->parser.parse_keywords(values_line, Parser::KeywordType::ACCEPT_KEYWORDS);
         else if(var.starts_with("USE_EXPAND"))
             handle_use_expand_line(var, values_line);
         else assert(false);
@@ -377,8 +372,9 @@ void UseFlags::populate_profile_flags()
             if(expand_type.hidden)
                 hidden_useflags.insert(flag_id);
         }
-
     }
+
+    set_arch();
 
     cout << "Reading global forced and masked flags from profile tree" << endl;
     auto start = high_resolution_clock::now();

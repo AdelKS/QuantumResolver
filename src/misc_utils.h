@@ -60,6 +60,7 @@ std::vector<std::pair<std::size_t, std::string_view>> split_string(const std::st
 
 std::unordered_set<std::size_t> get_activated_useflags(std::unordered_map<std::size_t, bool> flag_states);
 
+void print_file_contents(const std::filesystem::path& file_path);
 
 /// \brief finds the bash variables in 'str_view', i.e. of the form $foo and/or ${bar}
 /// \param str_view: the string on which to look for bash variables

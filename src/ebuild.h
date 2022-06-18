@@ -57,15 +57,19 @@ public:
     bool respects_pkg_constraint(const PackageConstraint &pkg_constraint);
     bool respects_usestates(const UseDependencies &use_dependencies);
 
+    void accept_keywords(const Keywords& accept_these_keywords);
     void assign_useflag_state(std::size_t flag_id, bool state, const FlagAssignType &assign_type = FlagAssignType::DIRECT);
     void assign_useflag_states(const UseflagStates &useflag_states, const FlagAssignType &assign_type = FlagAssignType::DIRECT);
-    void set_id(std::size_t id);
-    std::size_t get_id();
 
-    void set_pkg_id(std::size_t id);
-    std::size_t get_pkg_id();
+    void set_id(std::size_t id) { this->id = id; };
+    void set_pkg_id(std::size_t id) { this->pkg_id = id; };
 
-    const EbuildVersion &get_version();
+    std::size_t get_id() const { return id; };
+    std::size_t get_pkg_id() const { return pkg_id; };
+    Keywords::State get_arch_keyword() const;
+    const EbuildVersion &get_version() const { return eversion; };
+
+    bool is_keyword_accepted() const { return keyword_accepted; }
 
     static const std::size_t npos = std::numeric_limits<std::size_t>::max();
 
@@ -84,10 +88,8 @@ protected:
     EbuildVersion eversion;
     Database* db;
 
-    bool masked = false, installed = false, changed_use = false;
-    bool parsed_metadata = false, parsed_deps = false, finalized_flag_states = false;
     std::filesystem::path ebuild_path, install_path;
-    KeywordStates keywords;
+    Keywords keywords;
 
     Dependencies bdeps, rdeps;
     std::unordered_map<std::string, std::string> ebuild_data;
@@ -102,6 +104,10 @@ protected:
 
     std::size_t id = npos, pkg_id = npos;
     std::string slot, subslot;
+
+    bool masked = false, installed = false, changed_use = false;
+    bool parsed_metadata = false, parsed_deps = false, finalized_flag_states = false;
+    bool keyword_accepted = false;
 };
 
 

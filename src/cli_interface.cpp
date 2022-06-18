@@ -1,12 +1,13 @@
 #include "cli_interface.h"
+#include <fmt/core.h>
 
 CommandLineInterface::CommandLineInterface(std::vector<std::string> input)
 {
     if(input.size() == 2 and input[0] == "status")
-        print_flag_states(input[1]);
+        print_pkg_status(input[1]);
 }
 
-void CommandLineInterface::print_flag_states(const std::string &package_constraint_str)
+void CommandLineInterface::print_pkg_status(const std::string &package_constraint_str)
 {
     PackageConstraint pkg_constraint = db.parser.parse_pkg_constraint(package_constraint_str);
     if(pkg_constraint.pkg_id == db.repo.npos)
@@ -47,8 +48,8 @@ void CommandLineInterface::print_flag_states(const std::string &package_constrai
         first = false;
     }
 
-//        auto shared_use_force_strs = db.useflags.to_flag_names(shared_use_force);
-//        auto shared_use_mask_strs = db.useflags.to_flag_names(shared_use_mask);
+    auto shared_use_force_strs = db.useflags.to_flag_names(shared_use_force);
+    auto shared_use_mask_strs = db.useflags.to_flag_names(shared_use_mask);
 
     auto shared_active_flags = shared_use + shared_use_force - shared_use_mask;
     auto pretty_formatting = pretty_format_flags(
@@ -77,6 +78,8 @@ void CommandLineInterface::print_flag_states(const std::string &package_constrai
         if(ebuild.is_installed())
             fmt::print(fmt::emphasis::bold, "[I] {} ",  ebuild.get_version().string());
         else fmt::print("    {} ",  ebuild.get_version().string());
+
+        fmt::print(" {}={}{} ", db.useflags.get_arch_name(), format_keyword(ebuild.get_arch_keyword()), format_bool(ebuild.is_keyword_accepted()));
 
         auto ebuild_active_flags = ebuild.get_active_flags();
 

@@ -110,6 +110,8 @@ public:
     FlagID get_arch_id() const;
     FlagName get_arch_name() const;
 
+    const Keywords& get_accepted_keywords() const { return accepted_keywords; }
+
     const std::unordered_set<FlagID>& get_implicit_flags() const;
     const std::unordered_set<FlagID>& get_hidden_flags() const;
     const std::unordered_set<FlagID>& get_expand_flags() const;
@@ -155,7 +157,7 @@ protected:
     std::size_t current_arch = npos;
     std::string current_arch_name;
 
-    KeywordStates accepted_keywords;
+    Keywords accepted_keywords;
 
     Database *db;
 };

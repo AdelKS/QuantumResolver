@@ -18,27 +18,43 @@ namespace fs = filesystem;
 
 Repo::Repo(Database *db) : db(db)
 {
-//    auto start = high_resolution_clock::now();
-
     load_ebuilds("/var/db/repos/gentoo/metadata/md5-cache");
     load_installed_pkgs();
+    load_system_packages();
+    load_package_accept_keywords();
     load_package_useflag_settings();
-//    parse_deps();
-
-//    auto end = high_resolution_clock::now();
-
-//    cout << "#####################################################" << endl;
-//    cout << "Total time : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
 }
 
-
-template <class Map>
-void update_map(Map &original, const Map &update)
+void Repo::load_system_packages()
 {
-    for(const auto &[key, val]: update)
+    for(const auto& profile_path : flatenned_profiles_tree)
     {
-        original[key] = val;
+        fs::path packages(profile_path.string() + "/packages");
+        if(fs::is_regular_file(packages))
+        {
+            for(string_view pkg_atom: read_file_lines(packages))
+            {
+                // if it doesn't start with '*' skip it
+                // see 5.2.6 packages in the PMS
+                if(not pkg_atom.starts_with('*'))
+                    continue;
+                pkg_atom.remove_prefix(1);
+
+                auto constraint = db->parser.parse_pkg_constraint(pkg_atom);
+            }
+        }
     }
+}
+
+void Repo::load_package_accept_keywords()
+{
+    for(const auto &path: get_regular_files("/etc/portage/package.accept_keywords"))
+        for(string_view line: read_file_lines(path))
+        {
+            const auto &[pkg_constraint, accept_keywords] = db->parser.parse_pkg_accept_keywords_line(line);
+            if(pkg_constraint.pkg_id != pkgs.npos) //TODO : deal with assigning unexisting useflags
+                pkgs[pkg_constraint.pkg_id].accept_keywords(pkg_constraint, accept_keywords);
+        }
 }
 
 void Repo::load_package_useflag_settings()
