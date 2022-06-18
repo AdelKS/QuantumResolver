@@ -109,10 +109,6 @@ void Ebuild::parse_metadata()
         use_mask = db->useflags.get_use_mask() & iuse_effective;
 
         auto use_mask_strs = db->useflags.to_flag_names(use_mask);
-
-        if(eversion.string() == "11.3.0" and
-                db->repo.get_pkg_groupname(pkg_id) == "sys-devel/gcc"                )
-            cout << "here!" << endl;
     }
 
     if(ebuild_data.contains("SLOT"))
@@ -216,11 +212,6 @@ void Ebuild::assign_useflag_state(size_t flag_id, bool state, const FlagAssignTy
     if(not iuse_effective.contains(flag_id))
         return;
 
-    if(eversion.string() == "11.3.0" and
-            db->repo.get_pkg_groupname(pkg_id) == "sys-devel/gcc" and
-            db->useflags.get_flag_name(flag_id) == "pch")
-        cout << "here!" << endl;
-
     if(assign_type == FlagAssignType::DIRECT or
             (assign_type == FlagAssignType::STABLE_DIRECT and keywords.get_keyword(db->useflags.get_arch_id()) == Keywords::State::STABLE))
     {
@@ -283,10 +274,6 @@ std::unordered_set<FlagID> Ebuild::get_enforced_flags()
 
     auto use_force_strs = db->useflags.to_flag_names(use_force);
     auto use_mask_strs = db->useflags.to_flag_names(use_mask);
-
-    if(eversion.string() == "11.3.0" and
-            db->repo.get_pkg_groupname(pkg_id) == "sys-devel/gcc")
-        cout << "here!" << endl;
 
     return use_force + use_mask;
 }

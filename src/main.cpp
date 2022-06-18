@@ -14,8 +14,8 @@ int main(int argc, char *argv[])
         for(int i = 1 ; i < argc ; i++)
             input.push_back(argv[i]);
 
-        input.push_back("status");
-        input.push_back("sys-devel/gcc");
+//        input.push_back("status");
+//        input.push_back("sys-devel/gcc");
 
         auto start = high_resolution_clock::now();
         CommandLineInterface cli(input);

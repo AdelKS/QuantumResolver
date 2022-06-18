@@ -109,11 +109,11 @@ inline std::string format_keyword(Keywords::State keyword_state)
 {
     const static std::unordered_map<Keywords::State, std::string> state_to_string =
     {
-        {Keywords::State::BROKEN, fmt::format(fg(gentoo_red), "*")},
-        {Keywords::State::UNDEFINED, fmt::format(fg(fmt::color::black), "o")},
-        {Keywords::State::LIVE, fmt::format(fg(fmt::color::black), "o")},
-        {Keywords::State::STABLE, fmt::format(fg(gentoo_green), "+")},
-        {Keywords::State::TESTING, fmt::format(fg(fmt::color::dark_orange), "~")},
+        {Keywords::State::BROKEN, fmt::format(fg(gentoo_red) | fmt::emphasis::bold, "*")},
+        {Keywords::State::UNDEFINED, fmt::format(fg(fmt::color::black) | fmt::emphasis::bold, "o")},
+        {Keywords::State::LIVE, fmt::format(fg(fmt::color::black) | fmt::emphasis::bold, "o")},
+        {Keywords::State::STABLE, fmt::format(fg(gentoo_green) | fmt::emphasis::bold, "+")},
+        {Keywords::State::TESTING, fmt::format(fg(fmt::color::dark_orange) | fmt::emphasis::bold, "~")},
     };
 
     return state_to_string.at(keyword_state);

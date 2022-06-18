@@ -22,9 +22,12 @@ Currently, `quantum` offers `status` as a command line argument
 quantum status [atom]
 ```
 
-where `[atom]` is for example `sys-devel/gcc` or `"=sys-devel/gcc-10.3*"`. It does a mixture between `equery y [atom]` and `emerge -qpvO [atom]`: it outputs the state of the flags for each version that matches `[atom]` if it were to be (re)emerged, while showing any eventual changed use with the same color code as `emerge`.
+where `[atom]` is for example `sys-devel/gcc` or `"=sys-devel/gcc-10.3*"`. It does a mixture between `equery y [atom]` and `emerge -qpvO [atom]`:
+- Outputs the state of the flags for each version that matches `[atom]` if it were to be (re)emerged.
+- Shows any eventual changed use with the same color code as `emerge`.
+- Shows the keywording of the matched ebuilds (with the same code as `equery`) and if they are accepted (with a '✓' or '𐄂')
 
-The idea is to have it display a "matrix" view that gives all the necessary information. This is only a intermediary step that is needed to implement a proper dependency resolver: it needs to know of flag changes, installed packages, flag states... etc.
+The idea is to have it display a table view (will be implemented) that gives all the necessary information. This is only a intermediary step that is needed to implement a proper dependency resolver: it needs to know of flag changes, installed packages, flag states... etc.
 
 ##### Example
 Running the following command
@@ -32,7 +35,7 @@ Running the following command
 ./quantum status sys-devel/gcc
 ```
 
-outputs something like this
+outputs something like this (please give a try to the code to see it with color coding)
 
 ```shell
 ##############################
@@ -44,52 +47,48 @@ USE="(cxx) fortran graphite (multilib) nls nptl openmp pgo (pie) sanitize ssp vt
 ~~~~~~~~~~~~~~~~~~~~
 Matching versions
 --------------------
-    8.5.0-r1  USE="pch -mpx"
+    8.5.0-r1  amd64=+✓  USE="pch -mpx"
 --------------------
-    9.5.0  USE="pch -d -lto"
+    9.5.0  amd64=+✓  USE="pch -d -lto"
 --------------------
-    10.3.0-r2  USE="zstd (-cet) -d -lto (-pch)"
+    10.3.0-r2  amd64=+✓  USE="pch zstd (-cet) -d -lto"
 --------------------
-    10.3.1_p20211126  USE="zstd (-cet) -d -lto (-pch)"
+    10.3.1_p20211126  amd64=+✓  USE="pch zstd (-cet) -d -lto"
 --------------------
-    10.3.1_p20220526  USE="zstd (-cet) -d -lto (-pch)"
+    10.3.1_p20220609  amd64=o𐄂  USE="pch zstd (-cet) -d -lto"
 --------------------
-    10.3.1_p20220602  USE="zstd (-cet) -d -lto (-pch)"
+    10.4.9999  amd64=o𐄂  USE="zstd (-cet) -d -lto (-pch)"
 --------------------
-    10.4.9999  USE="zstd (-cet) -d -lto (-pch)"
+    11.2.0  amd64=+✓  USE="pch zstd (-cet) (-custom-cflags) -d -lto -valgrind"
 --------------------
-    11.2.0  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+    11.2.1_p20220115  amd64=+✓  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
 --------------------
-    11.2.1_p20220115  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+[I] 11.3.0  amd64=+✓  USE="zstd (-cet) (-custom-cflags) -d -lto* (-pch) -valgrind"
 --------------------
-[I] 11.3.0  USE="zstd (-cet) (-custom-cflags) -d -lto* (-pch) -valgrind"
+    11.3.1_p20220610  amd64=o𐄂  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
 --------------------
-    11.3.1_p20220527  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+    11.4.9999  amd64=o𐄂  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
 --------------------
-    11.3.1_p20220603  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+    12.1.0  amd64=o𐄂  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
 --------------------
-    11.4.9999  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+    12.1.1_p20220528-r1  amd64=o𐄂  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
 --------------------
-    12.1.0  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+    12.1.1_p20220611  amd64=o𐄂  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
 --------------------
-    12.1.1_p20220528  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+    12.2.9999  amd64=o𐄂  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
 --------------------
-    12.1.1_p20220528-r1  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+    13.0.0_pre20220605  amd64=o𐄂  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
 --------------------
-    12.1.1_p20220604  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+    13.0.9999  amd64=o𐄂  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
 --------------------
-    12.2.9999  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
---------------------
-    13.0.0_pre20220529  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
---------------------
-    13.0.0_pre20220605  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
---------------------
-    13.0.9999  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
+#####################################################
+Total time : 128ms
+
 ```
 
 **Notes:**
 - The `lto` flag got disabled for demonstration purposes, one can see that it's printed as `-lto*` (with a star at the end, and in green in the terminal) only for the installed version.
-- The masked versions are not yet put between parentheses, _e.g._ `(13.0.9999)` instead of the displayed `13.0.9999`.
+- The masked versions are not yet put between parentheses, _e.g._ `(8.5.0-r1)` instead of the displayed `8.5.0-r1`.
 
 #### How to (e)build
 
