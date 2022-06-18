@@ -128,8 +128,8 @@ void Ebuild::parse_metadata()
 
     if(keywords.get_state(db->useflags.get_arch_id()) == KeywordStates::State::STABLE)
     {
-        use_force = db->useflags.get_use_stable_force() & iuse_effective;
-        use_mask = db->useflags.get_use_stable_mask() & iuse_effective;
+        use_force += db->useflags.get_use_stable_force() & iuse_effective;
+        use_mask += db->useflags.get_use_stable_mask() & iuse_effective;
     }
 
     parsed_metadata = true;
