@@ -134,7 +134,7 @@ void CommandLineInterface::print_pkg_status(const std::string &package_constrain
                         ebuild.get_changed_flags());
 
             size_t index = 0;
-            const std::string flags_padding(5, ' ');
+            const std::string flags_padding(3, ' ');
             for(const auto& [expand_name, flag_formatting]: pretty_formatting)
             {
                 const bool last = index == pretty_formatting.size() - 1;
@@ -152,7 +152,8 @@ void CommandLineInterface::print_pkg_status(const std::string &package_constrain
                     append_newline();
                     for(size_t split_index = 0 ; split_index < flags_split.size() ; split_index++)
                     {
-                        cell += padding + flags_padding + fmt::format("{}", fmt::join(flags_split[split_index], " "));
+                        cell += padding + flags_padding + (split_index == 0 ? "\"" : " ") +
+                                fmt::format("{}", fmt::join(flags_split[split_index], " "));
                         if(split_index != flags_split.size()-1)
                             append_newline();
                     }
