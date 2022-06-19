@@ -23,9 +23,10 @@ quantum status [atom]
 ```
 
 where `[atom]` is for example `sys-devel/gcc` or `"=sys-devel/gcc-10.3*"`. It does a mixture between `equery y [atom]` and `emerge -qpvO [atom]`:
+- Shows the keywording of the matched ebuilds (with the same code as `equery`) on the arch you are running, and if they are accepted (with a 'y' or 'n')
+- Show the slot of each version
 - Outputs the state of the flags for each version that matches `[atom]` if it were to be (re)emerged.
 - Shows any eventual changed use with the same color code as `emerge`.
-- Shows the keywording of the matched ebuilds (with the same code as `equery`) on the arch you are running, and if they are accepted (with a '✓' or '𐄂')
 
 The idea is to have it display a table view (will be implemented) that gives all the necessary information. This is only a intermediary step that is needed to implement a proper dependency resolver: it needs to know of flag changes, installed packages, flag states... etc.
 
@@ -40,50 +41,68 @@ outputs something like this (please give a try to the code to see it with color 
 ```shell
 ##############################
 sys-devel/gcc
-~~~~~~~~~~~~~~~~~~~~
-Shared states
---------------------
-USE="(cxx) fortran graphite (multilib) nls nptl openmp pgo (pie) sanitize ssp vtv (-ada) -debug -doc (-fixed-point) -go (-hardened) -jit (-libssp) -objc -objc++ -objc-gc -systemtap -test -vanilla"
-~~~~~~~~~~~~~~~~~~~~
-Matching versions
---------------------
-    8.5.0-r1  amd64=+✓  USE="pch -mpx"
---------------------
-    9.5.0  amd64=+✓  USE="pch -d -lto"
---------------------
-    10.3.0-r2  amd64=+✓  USE="pch zstd (-cet) -d -lto"
---------------------
-    10.3.1_p20211126  amd64=+✓  USE="pch zstd (-cet) -d -lto"
---------------------
-    10.3.1_p20220609  amd64=o𐄂  USE="pch zstd (-cet) -d -lto"
---------------------
-    10.4.9999  amd64=o𐄂  USE="zstd (-cet) -d -lto (-pch)"
---------------------
-    11.2.0  amd64=+✓  USE="pch zstd (-cet) (-custom-cflags) -d -lto -valgrind"
---------------------
-    11.2.1_p20220115  amd64=+✓  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
---------------------
-[I] 11.3.0  amd64=+✓  USE="zstd (-cet) (-custom-cflags) -d -lto* (-pch) -valgrind"
---------------------
-    11.3.1_p20220610  amd64=o𐄂  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
---------------------
-    11.4.9999  amd64=o𐄂  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
---------------------
-    12.1.0  amd64=o𐄂  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
---------------------
-    12.1.1_p20220528-r1  amd64=o𐄂  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
---------------------
-    12.1.1_p20220611  amd64=o𐄂  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
---------------------
-    12.2.9999  amd64=o𐄂  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
---------------------
-    13.0.0_pre20220605  amd64=o𐄂  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
---------------------
-    13.0.9999  amd64=o𐄂  USE="zstd (-cet) (-custom-cflags) -d -lto (-pch) -valgrind"
---------------------
-#####################################################
-Total time : 128ms
+~~~~~~~~~~~~~
 
+Shared flag states
+~~~~~~~~~~~~~~~~~~
+USE="(cxx) fortran graphite (multilib) nls nptl openmp pgo (pie) sanitize ssp vtv (-ada) -debug -doc (-fixed-point) -go (-hardened) -jit (-libssp) -objc -objc++ -objc-gc -systemtap -test -vanilla"
+
+Matching versions
+~~~~~~~~~~~~~~~~~~
+
+                          | amd64 | SLOT  | non shared flag states                         |
+--------------------------+-------+-------+------------------------------------------------|
+     8.5.0-r1             | + y   | 8.5.0 | USE += "pch -mpx"                              |
+--------------------------+-------+-------+------------------------------------------------|
+     9.5.0                | + y   | 9.5.0 | USE += "lto pch -d"                            |
+--------------------------+-------+-------+------------------------------------------------|
+     10.3.0-r2            | + y   | 10    | USE += "lto pch zstd (-cet) -d"                |
+     10.3.1_p20211126     | + y   |       | USE += "lto pch zstd (-cet) -d"                |
+     10.3.1_p20220609     | o n   |       | USE += "lto pch zstd (-cet) -d"                |
+     10.3.1_p20220616     | o n   |       | USE += "lto pch zstd (-cet) -d"                |
+     10.4.9999            | o n   |       | USE += "lto zstd (-cet) -d (-pch)"             |
+--------------------------+-------+-------+------------------------------------------------|
+     11.2.0               | + y   | 11    | USE +=                                         |
+                          |       |       |    "lto pch zstd (-cet) (-custom-cflags) -d    |
+                          |       |       |     -valgrind"                                 |
+     11.2.1_p20220115     | + y   |       | USE +=                                         |
+                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
+                          |       |       |     -valgrind"                                 |
+ [I] 11.3.0               | + y   |       | USE +=                                         |
+                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
+                          |       |       |     -valgrind"                                 |
+     11.3.1_p20220610     | o n   |       | USE +=                                         |
+                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
+                          |       |       |     -valgrind"                                 |
+     11.3.1_p20220617     | o n   |       | USE +=                                         |
+                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
+                          |       |       |     -valgrind"                                 |
+     11.4.9999            | o n   |       | USE +=                                         |
+                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
+                          |       |       |     -valgrind"                                 |
+--------------------------+-------+-------+------------------------------------------------|
+     12.1.0               | o n   | 12    | USE +=                                         |
+                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
+                          |       |       |     -valgrind"                                 |
+     12.1.1_p20220528-r1  | o n   |       | USE +=                                         |
+                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
+                          |       |       |     -valgrind"                                 |
+     12.1.1_p20220611     | o n   |       | USE +=                                         |
+                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
+                          |       |       |     -valgrind"                                 |
+     12.2.9999            | o n   |       | USE +=                                         |
+                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
+                          |       |       |     -valgrind"                                 |
+--------------------------+-------+-------+------------------------------------------------|
+     13.0.0_pre20220605   | o n   | 13    | USE +=                                         |
+                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
+                          |       |       |     -valgrind"                                 |
+     13.0.9999            | o n   |       | USE +=                                         |
+                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
+                          |       |       |     -valgrind"                                 |
+--------------------------+-------+-------+------------------------------------------------|
+#####################################################
+Total time : 124ms
 ```
 
 **Notes:**
