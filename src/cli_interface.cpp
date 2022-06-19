@@ -1,5 +1,7 @@
 #include "cli_interface.h"
-#include <fmt/core.h>
+#include "src/format_utils.h"
+#include <fmt/color.h>
+#include <fmt/format.h>
 
 CommandLineInterface::CommandLineInterface(std::vector<std::string> input)
 {
@@ -61,40 +63,112 @@ void CommandLineInterface::print_pkg_status(const std::string &package_constrain
     std::cout << std::string(30, '#') << std::endl;
     fmt::print(fmt::fg(gentoo_green) | fmt::emphasis::bold, "{}\n", package_constraint_str);
 
-    std::cout << std::string(20, '~') << std::endl;
-    std::cout << "Shared states" << std::endl << std::string(20, '-') << std::endl;
+    std::cout << std::string(package_constraint_str.size(), '~') << std::endl << std::endl;
+
+    const std::string shared_flag_states = matched_ebuild_ids.size() == 1 ? "Flag states" : "Shared flag states";
+    std::cout << shared_flag_states << std::endl << std::string(shared_flag_states.size(), '~') << std::endl;
 
     for(const auto& [expand_name, flag_formatting]: pretty_formatting)
         fmt::print("{}=\"{}\"\n", expand_name, fmt::join(flag_formatting, " "));
 
-    std::cout << std::string(20, '~') << std::endl;
-    fmt::print("Matching versions\n", db.repo[pkg_constraint.pkg_id].get_pkg_groupname());
+    std::cout << std::endl;
+
+
+    const std::string versions = "Matching versions\n";
+    std::cout << versions << std::string(versions.size(), '~') << std::endl << std::endl;
+
+    std::vector<std::vector<std::string>> status_table;
+
+    if(non_shared_flags.empty())
+        status_table.push_back({"", db.useflags.get_arch_name(), "SLOT"});
+    else status_table.push_back({"", db.useflags.get_arch_name(), "SLOT", "non shared flag states"});
+
+    std::string slot;
+
+    // we use this truct to append to strings
+    enum struct Table : size_t {VERSION = 0, KEYWORD, SLOT, NON_SHARED_FLAG_STATES, SIZE};
 
     for(auto& ebuild_id: matched_ebuild_ids)
     {
         auto& ebuild = db.repo[pkg_constraint.pkg_id][ebuild_id];
-        std::cout << std::string(20, '-') << std::endl;
+
+        bool same_slot = ebuild.get_slot_str() == slot;
+
+        std::vector<std::string> new_ebuild_line((size_t(Table::SIZE)) - non_shared_flags.empty());
+
+        std::vector<std::string>& ebuild_line = same_slot ? status_table.back() : new_ebuild_line;
+
+        auto append_newline = [&]()
+        {
+            for(auto& str: ebuild_line)
+                str += '\n';
+        };
+
+        // append new lines if we remain on the same slot
+        if(same_slot)
+            append_newline();
+        else
+        {
+            slot = ebuild.get_slot_str();
+            ebuild_line[size_t(Table::SLOT)] += fmt::format(fg(gentoo_orange) | fmt::emphasis::bold, slot);
+        }
+
 
         if(ebuild.is_installed())
-            fmt::print(fmt::emphasis::bold, "[I] {} ",  ebuild.get_version().string());
-        else fmt::print("    {} ",  ebuild.get_version().string());
+            ebuild_line[size_t(Table::VERSION)] += fmt::format(fmt::emphasis::bold, "[I] {}",  ebuild.get_version().string());
+        else ebuild_line[size_t(Table::VERSION)] += fmt::format("    {} ",  ebuild.get_version().string());
 
-        fmt::print(" {}={}{} ", db.useflags.get_arch_name(), format_keyword(ebuild.get_arch_keyword()), format_bool(ebuild.is_keyword_accepted()));
+        ebuild_line[size_t(Table::KEYWORD)] += fmt::format("{} {}",
+                                               format_keyword(ebuild.get_arch_keyword()),
+                                               format_bool(ebuild.is_keyword_accepted()));
 
         auto ebuild_active_flags = ebuild.get_active_flags();
 
-        auto pretty_formatting = pretty_format_flags(
-                    db.useflags,
-                    (ebuild_active_flags & ebuild.get_iuse()) & non_shared_flags,
-                    (ebuild.get_iuse() - ebuild_active_flags) & non_shared_flags,
-                    ebuild.get_enforced_flags() & non_shared_flags,
-                    ebuild.get_changed_flags());
+        if(not non_shared_flags.empty())
+        {
+            auto pretty_formatting = pretty_format_flags(
+                        db.useflags,
+                        (ebuild_active_flags & ebuild.get_iuse()) & non_shared_flags,
+                        (ebuild.get_iuse() - ebuild_active_flags) & non_shared_flags,
+                        ebuild.get_enforced_flags() & non_shared_flags,
+                        ebuild.get_changed_flags());
 
-        for(const auto& [expand_name, flag_formatting]: pretty_formatting)
-            fmt::print(" {}=\"{}\"", expand_name, fmt::join(flag_formatting, " "));
+            size_t index = 0;
+            const std::string flags_padding(5, ' ');
+            for(const auto& [expand_name, flag_formatting]: pretty_formatting)
+            {
+                const bool last = index == pretty_formatting.size() - 1;
+                std::string& cell = ebuild_line[size_t(Table::NON_SHARED_FLAG_STATES)];
+                const auto& flags_split  = split_string_list(flag_formatting, 40);
 
-        std::cout << std::endl;
+                const std::string padding((index != 0) * 2, ' ');
+
+                cell += padding + expand_name + " += ";
+
+                if(flags_split.size() == 1)
+                    cell += fmt::format("\"{}\"", fmt::join(flags_split.front(), " "));
+                else
+                {
+                    append_newline();
+                    for(size_t split_index = 0 ; split_index < flags_split.size() ; split_index++)
+                    {
+                        cell += padding + flags_padding + fmt::format("{}", fmt::join(flags_split[split_index], " "));
+                        if(split_index != flags_split.size()-1)
+                            append_newline();
+                    }
+                    cell += "\"";
+                }
+
+                if(not last)
+                    append_newline();
+
+                index++;
+            }
+        }
+
+        if(not same_slot)
+            status_table.push_back(std::move(new_ebuild_line));
     }
 
-    std::cout << std::string(20, '-') << std::endl;
+    print_table(status_table);
 }

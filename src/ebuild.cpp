@@ -5,6 +5,7 @@
 #include "database.cpp"
 #include "src/parser.h"
 #include "useflags.cpp"
+#include "format_utils.h"
 
 using namespace std;
 
@@ -316,6 +317,13 @@ const std::unordered_set<FlagID>& Ebuild::get_use_force()
         finalize_flag_states();
 
     return use_force;
+}
+
+std::string Ebuild::get_slot_str() const
+{
+    if(slot == subslot)
+        return slot;
+    else return slot + "/" + subslot;
 }
 
 const std::string& Ebuild::get_slot() const

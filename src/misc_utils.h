@@ -18,14 +18,6 @@
 #include <set>
 #include <cctype>
 
-#define FMT_HEADER_ONLY
-#include <fmt/format.h>
-#include <fmt/color.h>
-
-constexpr fmt::rgb gentoo_blue(18,72,139);
-constexpr fmt::rgb gentoo_red(192,28,40);
-constexpr fmt::rgb gentoo_green(38,162,105);
-
 #define LINE_MAX_SIZE 50000
 
 const extern std::vector<std::filesystem::path> flatenned_profiles_tree;
@@ -73,6 +65,8 @@ std::string to_lower(std::string&& sv);
 
 std::string to_upper(std::string_view sv);
 std::string to_upper(std::string&& sv);
+
+std::string remove_ansi_escape(const std::string& str);
 
 // Set union
 

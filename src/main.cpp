@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
             input.push_back(argv[i]);
 
 //        input.push_back("status");
-//        input.push_back("sys-devel/gcc");
+//        input.push_back("sys-devel/clang");
 
         auto start = high_resolution_clock::now();
         CommandLineInterface cli(input);

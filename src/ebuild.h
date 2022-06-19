@@ -50,6 +50,7 @@ public:
     std::unordered_set<FlagID> get_active_flags();
     std::unordered_set<FlagID> get_install_active_flags();
 
+    std::string get_slot_str() const;
     const std::string& get_slot() const;
     const std::string& get_subslot() const;
 

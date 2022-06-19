@@ -7,6 +7,7 @@
 #include <cassert>
 
 #include <chrono>
+#include <regex>
 
 using namespace std;
 using namespace chrono;
@@ -56,6 +57,13 @@ size_t pkg_namever_split_pos(const string_view &name_ver)
         return before_last_dash;
     else return last_dash;
 
+}
+
+std::string remove_ansi_escape(const std::string& str_view)
+{
+    // taken from https://stackoverflow.com/questions/14693701/how-can-i-remove-the-ansi-escape-sequences-from-a-string-in-python
+    const static std::regex reg(R"MERDE(\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]))MERDE");
+    return std::regex_replace(str_view, reg, "");
 }
 
 void print_file_contents(const fs::path& path)

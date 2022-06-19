@@ -3,6 +3,7 @@
 #include "database.h"
 #include "src/multikey_map.h"
 #include "src/named_vector.h"
+#include "format_utils.h"
 
 #include <bits/ranges_algo.h>
 #include <filesystem>
