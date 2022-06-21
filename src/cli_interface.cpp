@@ -18,7 +18,8 @@ void CommandLineInterface::print_pkg_status(const std::string &package_constrain
         return;
     }
 
-    std::vector<EbuildID> matched_ebuild_ids = db.repo[pkg_constraint.pkg_id].get_matching_ebuild_ids(pkg_constraint);
+    auto& pkg = db.repo[pkg_constraint.pkg_id];
+    std::vector<EbuildID> matched_ebuild_ids = pkg.get_matching_ebuild_ids(pkg_constraint);
     if(matched_ebuild_ids.empty())
         return;
 
@@ -38,7 +39,7 @@ void CommandLineInterface::print_pkg_status(const std::string &package_constrain
 
     for(auto& ebuild_id: matched_ebuild_ids)
     {
-        auto& ebuild = db.repo[pkg_constraint.pkg_id][ebuild_id];
+        auto& ebuild = pkg[ebuild_id];
         intersect_or_assign(shared_iuse, ebuild.get_iuse());
         intersect_or_assign(shared_use, ebuild.get_use());
         intersect_or_assign(shared_use_force, ebuild.get_use_force());
@@ -61,7 +62,13 @@ void CommandLineInterface::print_pkg_status(const std::string &package_constrain
                 (shared_use_force + shared_use_mask));
 
     std::cout << std::string(30, '#') << std::endl;
-    fmt::print(fmt::fg(gentoo_green) | fmt::emphasis::bold, "{}\n", package_constraint_str);
+    fmt::print(fmt::fg(gentoo_green) | fmt::emphasis::bold, "{}", package_constraint_str);
+
+    fmt::print(fmt::fg(gentoo_orange) | fmt::emphasis::bold, "{}",
+               db.repo.is_system_pkg(pkg_constraint.pkg_id) ? "    @system" : "");
+
+    fmt::print(fmt::emphasis::bold, "{}\n",
+               db.repo.is_selected_pkg(pkg_constraint.pkg_id) ? "    @selected-packages" : "");
 
     std::cout << std::string(package_constraint_str.size(), '~') << std::endl << std::endl;
 
@@ -90,7 +97,7 @@ void CommandLineInterface::print_pkg_status(const std::string &package_constrain
 
     for(auto& ebuild_id: matched_ebuild_ids)
     {
-        auto& ebuild = db.repo[pkg_constraint.pkg_id][ebuild_id];
+        auto& ebuild = pkg[ebuild_id];
 
         bool same_slot = ebuild.get_slot_str() == slot;
 

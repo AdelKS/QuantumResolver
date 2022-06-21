@@ -85,6 +85,19 @@ Ebuild &Package::operator[](EbuildID id)
     return ebuilds[id];
 }
 
+const Ebuild &Package::operator[](const string &ver) const
+{
+    size_t index = ebuilds.index_of(ver);
+    if(index == ebuilds.npos)
+        throw runtime_error("version " + ver + "is not available in " + pkg_groupname);
+    else return ebuilds[index];
+}
+
+const Ebuild &Package::operator[](EbuildID id) const
+{
+    return ebuilds[id];
+}
+
 Ebuild& Package::add_version(const string &version)
 {
     EbuildID ebuild_id = ebuild_id_of(version);

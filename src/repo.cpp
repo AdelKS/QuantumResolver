@@ -12,6 +12,7 @@ using namespace std::chrono;
 #include "repo.h"
 #include "database.h"
 #include "misc_utils.h"
+#include "format_utils.h"
 
 using namespace std;
 namespace fs = filesystem;
@@ -21,6 +22,7 @@ Repo::Repo(Database *db) : db(db)
     load_ebuilds("/var/db/repos/gentoo/metadata/md5-cache");
     load_installed_pkgs();
     load_system_packages();
+    load_selected_packages();
     load_package_accept_keywords();
     load_package_useflag_settings();
 }
@@ -41,7 +43,25 @@ void Repo::load_system_packages()
                 pkg_atom.remove_prefix(1);
 
                 auto constraint = db->parser.parse_pkg_constraint(pkg_atom);
+                if(constraint.pkg_id != pkgs.npos)
+                    system_pkgs.insert(constraint.pkg_id);
+                else throw runtime_error(fmt::format("Could not recognise {} in {}", pkg_atom, profile_path.string()));
             }
+        }
+    }
+}
+
+void Repo::load_selected_packages()
+{
+    fs::path selected_packages("/var/lib/portage/world");
+    if(fs::is_regular_file(selected_packages))
+    {
+        for(string_view pkg_atom: read_file_lines(selected_packages))
+        {
+            auto constraint = db->parser.parse_pkg_constraint(pkg_atom);
+            if(constraint.pkg_id != pkgs.npos)
+                selected_pkgs.insert(constraint.pkg_id);
+            else fmt::print("There are no ebuilds for {} in ::gentoo\n", pkg_atom);
         }
     }
 }
@@ -56,6 +76,12 @@ void Repo::load_package_accept_keywords()
                 pkgs[pkg_constraint.pkg_id].accept_keywords(pkg_constraint, accept_keywords);
         }
 }
+
+bool Repo::is_system_pkg(PackageID pkg_id) const { return system_pkgs.contains(pkg_id); };
+bool Repo::is_selected_pkg(PackageID pkg_id) const { return selected_pkgs.contains(pkg_id); };
+
+std::size_t Repo::get_pkg_id(const std::string_view &pkg_str) const { return pkgs.index_of(pkg_str);};
+const std::string& Repo::get_pkg_groupname(std::size_t pkg_id) const { return pkgs[pkg_id].get_pkg_groupname(); };
 
 void Repo::load_package_useflag_settings()
 {
@@ -164,21 +190,6 @@ void Repo::load_installed_pkgs()
 
     auto end = high_resolution_clock::now();
     cout << "duration : " << duration_cast<milliseconds>(end - start).count() << "ms" << endl;
-}
-
-size_t Repo::get_pkg_id(const string_view &pkg_str)
-{
-    return pkgs.index_of(pkg_str);
-}
-
-Package& Repo::operator [] (PackageID pkg_id)
-{
-    return pkgs[pkg_id];
-}
-
-const string& Repo::get_pkg_groupname(size_t pkg_id)
-{
-    return pkgs[pkg_id].get_pkg_groupname();
 }
 
 void Repo::parse_ebuild_metadata()

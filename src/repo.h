@@ -23,10 +23,13 @@ class Repo
 public:
     Repo(Database *db);
 
-    std::size_t get_pkg_id(const std::string_view &pkg_str);
-    const std::string& get_pkg_groupname(std::size_t pkg_id);
+    bool is_system_pkg(PackageID pkg_id) const;
+    bool is_selected_pkg(PackageID pkg_id) const;
 
-    Package& operator [] (PackageID pkg_id);
+    std::size_t get_pkg_id(const std::string_view &pkg_str) const;
+    const std::string& get_pkg_groupname(std::size_t pkg_id) const;
+
+    Package& operator [] (PackageID pkg_id) { return pkgs[pkg_id]; };
 
     constexpr static std::size_t npos = std::numeric_limits<std::size_t>::max();
 
@@ -39,7 +42,9 @@ protected:
 
     void load_package_accept_keywords();
     void load_package_useflag_settings();
+
     void load_system_packages();
+    void load_selected_packages();
 
     NamedVector<Package> pkgs;
     std::unordered_set<PackageID> selected_pkgs, system_pkgs;

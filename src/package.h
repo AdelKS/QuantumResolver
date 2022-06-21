@@ -23,8 +23,12 @@ public:
     Package(const std::string &pkg_group_name, Database *db);
 
     Ebuild& add_version(const std::string &version);
-    Ebuild& add_repo_version(const std::string &version, const std::filesystem::path &ebuild_repo_path);
-    Ebuild& add_installed_version(const std::string& version, const std::filesystem::path &ebuild_install_path);
+
+    Ebuild& add_repo_version(const std::string &version,
+                             const std::filesystem::path &ebuild_repo_path);
+
+    Ebuild& add_installed_version(const std::string& version,
+                                  const std::filesystem::path &ebuild_install_path);
 
     EbuildID ebuild_id_of(const std::string &version);
 
@@ -38,6 +42,9 @@ public:
     Ebuild& operator [](EbuildID id);
     Ebuild& operator [](const std::string &ver);
 
+    const Ebuild& operator [](EbuildID id) const;
+    const Ebuild& operator [](const std::string &ver) const;
+
     void assign_useflag_states(const PackageConstraint &constraint,
                                const UseflagStates &useflag_states,
                                const FlagAssignType &assign_type = FlagAssignType::DIRECT);
@@ -45,8 +52,6 @@ public:
     void accept_keywords(const PackageConstraint &constraint, const Keywords& accept_keywords);
 
     std::vector<EbuildID> get_matching_ebuild_ids(const PackageConstraint &constraint);
-
-    void set_installed_version(const std::string &version, const std::string &activated_useflags);
 
     static constexpr EbuildID npos = NamedVector<Ebuild>::npos;
 
@@ -61,18 +66,11 @@ public:
 
 protected:
 
-    struct InstalledPkg
-    {
-        std::size_t ebuild_id = NamedVector<Ebuild>::npos; // can be npos
-        std::unordered_set<std::size_t> activated_useflags;
-    };
-
     std::string pkg_groupname; // e.g. sys-devel/gcc
     std::size_t pkg_id = npos;
 
     Database *db;
     NamedVector<Ebuild> ebuilds; // indexed by ver, e.g. 11.1.0-r1
-    InstalledPkg installed_pkg;
 };
 
 #endif // PACKAGE_H

@@ -64,7 +64,22 @@ public:
         else throw std::runtime_error("Accessing an unexisting object name: " + std::string(name));
     }
 
+    const Object& operator [](const std::string_view &name) const
+    {
+        auto it = name_to_index.find(name);
+        if(it != name_to_index.end())
+        {
+            return objects[it->second];
+        }
+        else throw std::runtime_error("Accessing an unexisting object name: " + std::string(name));
+    }
+
     Object& operator [](std::size_t i)
+    {
+        return objects[i];
+    }
+
+    const Object& operator [](std::size_t i) const
     {
         return objects[i];
     }
