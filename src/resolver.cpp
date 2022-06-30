@@ -1,4 +1,4 @@
-#include "resolver.h"
+#include "quantum-resolver/resolver.h"
 
 Resolver::Resolver()
 {

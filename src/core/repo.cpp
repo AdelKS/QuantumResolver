@@ -9,11 +9,11 @@
 #include <array>
 using namespace std::chrono;
 
-#include "repo.h"
-#include "database.h"
-#include "string_utils.h"
-#include "format_utils.h"
-#include "file_utils.h"
+#include "quantum-resolver/core/repo.h"
+#include "quantum-resolver/database.h"
+#include "quantum-resolver/utils/string_utils.h"
+#include "quantum-resolver/utils/format_utils.h"
+#include "quantum-resolver/utils/file_utils.h"
 
 using namespace std;
 namespace fs = filesystem;

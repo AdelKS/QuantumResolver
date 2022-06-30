@@ -1,9 +1,9 @@
 #include <iostream>
 #include <algorithm>
 
-#include "package.h"
-#include "string_utils.h"
-#include "database.h"
+#include "quantum-resolver/core/package.h"
+#include "quantum-resolver/utils/string_utils.h"
+#include "quantum-resolver/database.h"
 
 using namespace std;
 namespace fs = filesystem;

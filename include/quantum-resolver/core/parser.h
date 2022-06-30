@@ -10,9 +10,9 @@
 #include <limits>
 #include <cassert>
 
-#include "ebuild_version.h"
-#include "named_vector.h"
-#include "string_utils.h"
+#include "quantum-resolver/core/ebuild_version.h"
+#include "quantum-resolver/utils/named_vector.h"
+#include "quantum-resolver/utils/string_utils.h"
 
 typedef std::size_t ExpandID;
 typedef std::size_t FlagID;

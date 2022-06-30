@@ -1,7 +1,7 @@
 #ifndef TABLEPRINT_H
 #define TABLEPRINT_H
 
-#include "concepts.h"
+#include "quantum-resolver/utils/concepts.h"
 
 #include <bits/ranges_algo.h>
 #include <bits/ranges_base.h>

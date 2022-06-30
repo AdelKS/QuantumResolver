@@ -3,9 +3,9 @@
 
 #include <memory>
 
-#include "repo.h"
-#include "parser.h"
-#include "useflags.h"
+#include "quantum-resolver/core/repo.h"
+#include "quantum-resolver/core/parser.h"
+#include "quantum-resolver/core/useflags.h"
 
 class Database
 {

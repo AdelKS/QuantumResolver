@@ -6,9 +6,10 @@
 #include <deque>
 #include <limits>
 
-#include "ebuild.h"
-#include "named_vector.h"
-#include "parser.h"
+#include "quantum-resolver/core/parser.h"
+#include "quantum-resolver/core/ebuild.h"
+
+#include "quantum-resolver/utils/named_vector.h"
 
 class Database;
 

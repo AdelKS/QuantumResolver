@@ -4,7 +4,7 @@ using namespace std::chrono;
 
 using namespace std;
 
-#include "cli_interface.h"
+#include "quantum-resolver/cli/cli_interface.h"
 
 int main(int argc, char *argv[])
 {

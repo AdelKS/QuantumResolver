@@ -1,6 +1,7 @@
-#include "table_print.h"
-#include "format_utils.h"
-#include "string_utils.h"
+#include "quantum-resolver/cli/table_print.h"
+#include "quantum-resolver/utils/format_utils.h"
+#include "quantum-resolver/utils/string_utils.h"
+
 #include <cstddef>
 
 using namespace std;

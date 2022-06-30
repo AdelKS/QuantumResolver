@@ -1,10 +1,10 @@
-#include "src/file_utils.h"
-#include "string_utils.h"
+#include "quantum-resolver/utils/file_utils.h"
+#include "quantum-resolver/utils/string_utils.h"
 
-#include "database.h"
-#include "src/multikey_map.h"
-#include "src/named_vector.h"
-#include "format_utils.h"
+#include "quantum-resolver/database.h"
+#include "quantum-resolver/utils/multikey_map.h"
+#include "quantum-resolver/utils/named_vector.h"
+#include "quantum-resolver/utils/format_utils.h"
 
 #include <bits/ranges_algo.h>
 #include <filesystem>

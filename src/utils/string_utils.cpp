@@ -1,5 +1,4 @@
-#include "string_utils.h"
-#include "src/string_utils.h"
+#include "quantum-resolver/utils/string_utils.h"
 
 #include <filesystem>
 #include <iostream>

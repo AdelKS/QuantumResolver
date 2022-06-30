@@ -16,7 +16,7 @@
 #include <set>
 #include <cctype>
 
-#include "concepts.h"
+#include "quantum-resolver/utils/concepts.h"
 
 #define LINE_MAX_SIZE 50000
 

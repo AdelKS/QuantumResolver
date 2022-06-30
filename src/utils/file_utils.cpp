@@ -1,5 +1,5 @@
-#include "file_utils.h"
-#include "src/string_utils.h"
+#include "quantum-resolver/utils/file_utils.h"
+#include "quantum-resolver/utils/string_utils.h"
 
 #include <fstream>
 #include <iostream>

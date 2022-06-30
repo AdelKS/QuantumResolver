@@ -4,8 +4,8 @@
 #include <ranges>
 #include <string>
 
-#include "ebuild_version.h"
-#include "string_utils.h"
+#include "quantum-resolver/core/ebuild_version.h"
+#include "quantum-resolver/utils/string_utils.h"
 
 template<class Object>
 std::size_t index_of(const std::vector<Object> vec, Object obj)

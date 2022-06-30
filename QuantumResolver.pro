@@ -11,43 +11,46 @@ QMAKE_CXXFLAGS += -std=c++20 -march=native -Wpedantic -Wall -Wextra -Wconversion
 QMAKE_CXXFLAGS_RELEASE -= -O2
 QMAKE_CXXFLAGS_RELEASE += -O3
 
-SOURCES += \
-    src/cli_interface.cpp \
-    src/database.cpp \
-    src/ebuild.cpp \
-    src/ebuild_version.cpp \
-    src/file_utils.cpp \
-    src/format_utils.cpp \
-    src/main.cpp \
-    src/misc_utils.cpp \
-    src/package.cpp \
-    src/parser.cpp \
-    src/repo.cpp \
-    src/resolver.cpp \
-    src/string_utils.cpp \
-    src/table_print.cpp \
-    src/useflags.cpp
+INCLUDEPATH += include/
 
-HEADERS += \
-    src/bijection.h \
-    src/cli_interface.h \
-    src/concepts.h \
-    src/database.h \
-    src/ebuild.h \
-    src/ebuild_version.h \
-    src/file_utils.h \
-    src/format_utils.h \
-    src/misc_utils.h \
-    src/multikey_map.h \
-    src/named_vector.h \
-    src/package.h \
-    src/parser.h \
-    src/repo.h \
-    src/resolver.h \
-    src/string_utils.h \
-    src/table_print.h \
-    src/useflags.h
 
 DISTFILES += \
     README.md \
     notes.md
+
+SOURCES += \
+    src/cli/cli_interface.cpp \
+    src/cli/table_print.cpp \
+    src/core/ebuild.cpp \
+    src/core/ebuild_version.cpp \
+    src/core/package.cpp \
+    src/core/parser.cpp \
+    src/core/repo.cpp \
+    src/core/useflags.cpp \
+    src/database.cpp \
+    src/main.cpp \
+    src/resolver.cpp \
+    src/utils/file_utils.cpp \
+    src/utils/format_utils.cpp \
+    src/utils/misc_utils.cpp \
+    src/utils/string_utils.cpp
+
+HEADERS += \
+    include/quantum-resolver/cli/cli_interface.h \
+    include/quantum-resolver/cli/table_print.h \
+    include/quantum-resolver/core/ebuild.h \
+    include/quantum-resolver/core/ebuild_version.h \
+    include/quantum-resolver/core/package.h \
+    include/quantum-resolver/core/parser.h \
+    include/quantum-resolver/core/repo.h \
+    include/quantum-resolver/core/useflags.h \
+    include/quantum-resolver/database.h \
+    include/quantum-resolver/resolver.h \
+    include/quantum-resolver/utils/bijection.h \
+    include/quantum-resolver/utils/concepts.h \
+    include/quantum-resolver/utils/file_utils.h \
+    include/quantum-resolver/utils/format_utils.h \
+    include/quantum-resolver/utils/misc_utils.h \
+    include/quantum-resolver/utils/multikey_map.h \
+    include/quantum-resolver/utils/named_vector.h \
+    include/quantum-resolver/utils/string_utils.h

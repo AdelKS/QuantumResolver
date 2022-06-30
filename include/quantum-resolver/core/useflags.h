@@ -1,12 +1,14 @@
 #ifndef USEFLAGS_H
 #define USEFLAGS_H
 
-#include "named_vector.h"
-#include "bijection.h"
-#include "multikey_map.h"
-#include "string_utils.h"
-#include "concepts.h"
-#include "src/parser.h"
+
+#include "quantum-resolver/core/parser.h"
+
+#include "quantum-resolver/utils/named_vector.h"
+#include "quantum-resolver/utils/bijection.h"
+#include "quantum-resolver/utils/multikey_map.h"
+#include "quantum-resolver/utils/string_utils.h"
+#include "quantum-resolver/utils/concepts.h"
 
 #include <unordered_set>
 #include <unordered_map>

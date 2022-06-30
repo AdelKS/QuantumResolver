@@ -1,14 +1,18 @@
-#include "ebuild.h"
 
-#include "string_utils.h"
+#include "quantum-resolver/database.h"
+#include "quantum-resolver/core/parser.h"
+#include "quantum-resolver/core/useflags.h"
+#include "quantum-resolver/core/ebuild.h"
 
-#include "database.cpp"
-#include "src/parser.h"
-#include "useflags.cpp"
-#include "format_utils.h"
-#include "misc_utils.h"
+#include "quantum-resolver/utils/format_utils.h"
+#include "quantum-resolver/utils/misc_utils.h"
+#include "quantum-resolver/utils/string_utils.h"
+#include "quantum-resolver/utils/file_utils.h"
+
+#include <filesystem>
 
 using namespace std;
+namespace fs = filesystem;
 
 // TODO: separate CBUILD from BUILD, for cross compilation, in the future
 const std::unordered_map<std::string, DependencyType> Ebuild::dependency_types =

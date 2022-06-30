@@ -1,8 +1,8 @@
-#include "string_utils.h"
-#include "package.h"
-#include "database.h"
-#include "parser.h"
-#include "src/useflags.h"
+#include "quantum-resolver/utils/string_utils.h"
+#include "quantum-resolver/core/package.h"
+#include "quantum-resolver/database.h"
+#include "quantum-resolver/core/parser.h"
+#include "quantum-resolver/core/useflags.h"
 #include <iostream>
 #include <stdexcept>
 

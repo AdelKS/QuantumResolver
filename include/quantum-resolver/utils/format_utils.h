@@ -1,8 +1,9 @@
 #pragma once
 
-#include "concepts.h"
-#include "src/parser.h"
-#include "useflags.h"
+#include "quantum-resolver/utils/concepts.h"
+#include "quantum-resolver/core/parser.h"
+#include "quantum-resolver/core/useflags.h"
+
 #include <string>
 #include <string_view>
 #include <unordered_map>

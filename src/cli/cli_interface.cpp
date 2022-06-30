@@ -1,8 +1,8 @@
-#include "cli_interface.h"
-#include "src/format_utils.h"
-#include "src/string_utils.h"
-#include "src/table_print.h"
-#include "misc_utils.h"
+#include "quantum-resolver/cli/cli_interface.h"
+#include "quantum-resolver/utils/format_utils.h"
+#include "quantum-resolver/utils/string_utils.h"
+#include "quantum-resolver/cli/table_print.h"
+#include "quantum-resolver/utils/misc_utils.h"
 
 CommandLineInterface::CommandLineInterface(std::vector<std::string> input)
 {

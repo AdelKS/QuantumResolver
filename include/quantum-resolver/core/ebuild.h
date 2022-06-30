@@ -5,10 +5,10 @@
 #include <filesystem>
 #include <limits>
 
-#include "ebuild_version.h"
-#include "named_vector.h"
-#include "parser.h"
-#include "useflags.h"
+#include "quantum-resolver/core/ebuild_version.h"
+#include "quantum-resolver/utils/named_vector.h"
+#include "quantum-resolver/core/parser.h"
+#include "quantum-resolver/core/useflags.h"
 
 
 enum struct DependencyType {BUILD, RUNTIME};

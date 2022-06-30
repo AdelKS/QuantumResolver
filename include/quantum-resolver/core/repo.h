@@ -9,10 +9,10 @@
 #include <string>
 #include <string_view>
 
-#include "package.h"
-#include "parser.h"
-#include "string_utils.h"
-#include "useflags.h"
+#include "quantum-resolver/core/package.h"
+#include "quantum-resolver/core/parser.h"
+#include "quantum-resolver/core/useflags.h"
+#include "quantum-resolver/utils/string_utils.h"
 
 class Database;
 

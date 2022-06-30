@@ -6,7 +6,7 @@
 #include <vector>
 #include <unordered_map>
 
-#include "concepts.h"
+#include "quantum-resolver/utils/concepts.h"
 
 template <class Husband, class Wife> requires (! std::is_same_v<Husband, Wife>)
 class Bijection
