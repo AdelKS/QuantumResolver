@@ -6,6 +6,7 @@ The current main ideas:
 - Map package names, use flags, use expands to unique integers, for example `sys-devel/gcc` -> `13`, `pgo` -> `13` (use flags do not live in the same world as package names), and work only with integers while resolving dependencies.
   - For this purpose, various classes have been implemented (_e.g._ [NamedVector](src/named_vector.h), [MultiKeyMap](src/multikey_map.h) and [Bijection](src/bijection.h) that enable going back and forth between strings and integers.
 - Parse the initial files on disk only once and produce a fast intermediate representation that helps speeding up dependency resolution. This applies to _e.g._ to `ebuild` versions (see [ebuild_version.h](src/ebuild_version.h)), dependencies and flags (see [ebuild.h](src/ebuild.h)).
+- For the dependency resolution per se, I will code graphical dependency visualization tools to better grasp the interaction between `ebuild`s, and build on top of the insights I will win.
 
 
 #### Currently exposed feature to the CLI
@@ -96,14 +97,24 @@ Total time : 121ms
 
 #### How to (e)build
 
-In its current state, you need `qmake` (I will switch to `meson` when things get more serious)
+**Note:** This project is available in [GURU repository](https://wiki.gentoo.org/wiki/Project:GURU/Information_for_End_Users) as `app-portage/quantum-resolver`. Only the live version is available (needs adding an `ACCEPT_KEYWORDS` [rule for it](https://wiki.gentoo.org/wiki/ACCEPT_KEYWORDS))
+
+This project uses `meson` for building and installing, to build
 
 ```shell
-qmake CONFIG+="release" QuantumResolver.pro
-make
+meson setup build && cd build
+meson compile
 ```
 
-For a debug build
+To install, while still in the `build` folder
+
+```shell
+meson install
+```
+
+##### Development
+
+I will be keeping `qmake` afloat until `Qt Creator` better supports `meson`. A debug build can be made like this
 
 ```shell
 qmake CONFIG+='debug sanitizer sanitize_address' QuantumResolver.pro

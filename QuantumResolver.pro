@@ -28,7 +28,7 @@ SOURCES += \
     src/core/repo.cpp \
     src/core/useflags.cpp \
     src/database.cpp \
-    src/main.cpp \
+    src/quantum.cpp \
     src/resolver.cpp \
     src/utils/file_utils.cpp \
     src/utils/format_utils.cpp \

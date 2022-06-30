@@ -1,2 +1,3 @@
 QuantumResolver.pro.user
-build/*
+build*
+.*
