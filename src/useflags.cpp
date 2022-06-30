@@ -1,4 +1,5 @@
-#include "misc_utils.h"
+#include "src/file_utils.h"
+#include "string_utils.h"
 
 #include "database.h"
 #include "src/multikey_map.h"
@@ -9,6 +10,7 @@
 #include <filesystem>
 #include <chrono>
 #include <fmt/color.h>
+#include <iostream>
 #include <string_view>
 
 using namespace std::chrono;
@@ -144,21 +146,6 @@ const std::string& UseFlags::get_flag_name(const size_t &id) const
         throw runtime_error(fmt::format("flag ID {} doesn't exist", id));
 
     return it->first;
-}
-
-void UseFlags::make_expand_hidden(std::size_t prefix_index, bool hidden)
-{
-    use_expand.object_from_index(prefix_index).hidden = hidden;
-}
-
-void UseFlags::make_expand_implicit(std::size_t prefix_index, bool implicit)
-{
-    use_expand.object_from_index(prefix_index).implicit = implicit;
-}
-
-void UseFlags::remove_expand(std::size_t prefix_index)
-{
-    throw runtime_error("Function not implemented");
 }
 
 void UseFlags::handle_use_line(string_view flags, unordered_set<FlagID>& container)

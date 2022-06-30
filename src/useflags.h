@@ -4,7 +4,7 @@
 #include "named_vector.h"
 #include "bijection.h"
 #include "multikey_map.h"
-#include "misc_utils.h"
+#include "string_utils.h"
 #include "concepts.h"
 #include "src/parser.h"
 
@@ -35,8 +35,7 @@ struct FlagInfo
 struct UseExpandName
 {
     UseExpandName() {}
-    explicit UseExpandName(std::string str) : name(to_upper(std::move(str))) {}
-    explicit UseExpandName(const std::string_view& str_view) : name(to_upper(str_view)) {}
+    explicit UseExpandName(std::string_view str_view) : name(to_upper(str_view)) {}
     explicit UseExpandName(const char* c_str) : name(to_upper(std::string_view(c_str))) {}
 
     bool operator == (const UseExpandName& other) const
@@ -130,9 +129,6 @@ protected:
     void populate_profile_flags();
 
     void set_arch();
-    void make_expand_hidden(std::size_t prefix_index, bool hidden);
-    void make_expand_implicit(std::size_t prefix_index, bool implicit);
-    void remove_expand(std::size_t prefix_index);
 
     void handle_use_line(std::string_view flags, std::unordered_set<FlagID> &container);
     void handle_iuse_implicit_line(std::string_view flags);

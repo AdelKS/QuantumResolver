@@ -2,7 +2,7 @@
 #include <algorithm>
 
 #include "package.h"
-#include "misc_utils.h"
+#include "string_utils.h"
 #include "database.h"
 
 using namespace std;

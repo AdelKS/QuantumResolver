@@ -5,21 +5,28 @@ CONFIG -= qt
 
 TARGET = quantum
 
-QMAKE_CFLAGS += -std=c++20 -march=native -Wpedantic -Wall -Wconversion
-QMAKE_CXXFLAGS += -std=c++20 -march=native -Wpedantic -Wall -Wconversion
+QMAKE_CFLAGS += -std=c++20 -march=native -Wpedantic -Wall -Wextra -Wconversion
+QMAKE_CXXFLAGS += -std=c++20 -march=native -Wpedantic -Wall -Wextra -Wconversion
+
+QMAKE_CXXFLAGS_RELEASE -= -O2
+QMAKE_CXXFLAGS_RELEASE += -O3
 
 SOURCES += \
-        src/cli_interface.cpp \
-        src/database.cpp \
-        src/ebuild.cpp \
-        src/ebuild_version.cpp \
-        src/main.cpp \
-        src/misc_utils.cpp \
-        src/package.cpp \
-        src/parser.cpp \
-        src/repo.cpp \
-        src/resolver.cpp \
-        src/useflags.cpp
+    src/cli_interface.cpp \
+    src/database.cpp \
+    src/ebuild.cpp \
+    src/ebuild_version.cpp \
+    src/file_utils.cpp \
+    src/format_utils.cpp \
+    src/main.cpp \
+    src/misc_utils.cpp \
+    src/package.cpp \
+    src/parser.cpp \
+    src/repo.cpp \
+    src/resolver.cpp \
+    src/string_utils.cpp \
+    src/table_print.cpp \
+    src/useflags.cpp
 
 HEADERS += \
     src/bijection.h \
@@ -28,6 +35,7 @@ HEADERS += \
     src/database.h \
     src/ebuild.h \
     src/ebuild_version.h \
+    src/file_utils.h \
     src/format_utils.h \
     src/misc_utils.h \
     src/multikey_map.h \
@@ -36,6 +44,8 @@ HEADERS += \
     src/parser.h \
     src/repo.h \
     src/resolver.h \
+    src/string_utils.h \
+    src/table_print.h \
     src/useflags.h
 
 DISTFILES += \

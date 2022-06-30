@@ -12,7 +12,7 @@
 
 #include "ebuild_version.h"
 #include "named_vector.h"
-#include "misc_utils.h"
+#include "string_utils.h"
 
 typedef std::size_t ExpandID;
 typedef std::size_t FlagID;

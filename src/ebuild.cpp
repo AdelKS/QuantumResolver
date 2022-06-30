@@ -1,11 +1,12 @@
 #include "ebuild.h"
 
-#include "misc_utils.h"
+#include "string_utils.h"
 
 #include "database.cpp"
 #include "src/parser.h"
 #include "useflags.cpp"
 #include "format_utils.h"
+#include "misc_utils.h"
 
 using namespace std;
 

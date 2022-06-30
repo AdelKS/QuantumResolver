@@ -40,73 +40,58 @@ outputs something like this (please give a try to the code to see it with color 
 
 ```shell
 ##############################
-sys-devel/gcc
+sys-devel/gcc    @system    @selected-packages
 ~~~~~~~~~~~~~
 
 Shared flag states
 ~~~~~~~~~~~~~~~~~~
-USE="(cxx) fortran graphite (multilib) nls nptl openmp pgo (pie) sanitize ssp vtv (-ada) -debug -doc (-fixed-point) -go (-hardened) -jit (-libssp) -objc -objc++ -objc-gc -systemtap -test -vanilla"
+USE="(cxx) fortran graphite (multilib) nls nptl openmp pgo (pie) sanitize ssp vtv (-ada) -debug
+      -doc (-fixed-point) -go (-hardened) -jit (-libssp) -objc -objc++ -objc-gc -systemtap -test -vanilla"
 
 Matching versions
 ~~~~~~~~~~~~~~~~~~
 
-                          | amd64 | SLOT  | non shared flag states                         |
---------------------------+-------+-------+------------------------------------------------|
-     8.5.0-r1             | + y   | 8.5.0 | USE += "pch -mpx"                              |
---------------------------+-------+-------+------------------------------------------------|
-     9.5.0                | + y   | 9.5.0 | USE += "lto pch -d"                            |
---------------------------+-------+-------+------------------------------------------------|
-     10.3.0-r2            | + y   | 10    | USE += "lto pch zstd (-cet) -d"                |
-     10.3.1_p20211126     | + y   |       | USE += "lto pch zstd (-cet) -d"                |
-     10.3.1_p20220609     | o n   |       | USE += "lto pch zstd (-cet) -d"                |
-     10.3.1_p20220616     | o n   |       | USE += "lto pch zstd (-cet) -d"                |
-     10.4.9999            | o n   |       | USE += "lto zstd (-cet) -d (-pch)"             |
---------------------------+-------+-------+------------------------------------------------|
-     11.2.0               | + y   | 11    | USE +=                                         |
-                          |       |       |    "lto pch zstd (-cet) (-custom-cflags) -d    |
-                          |       |       |     -valgrind"                                 |
-     11.2.1_p20220115     | + y   |       | USE +=                                         |
-                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
-                          |       |       |     -valgrind"                                 |
- [I] 11.3.0               | + y   |       | USE +=                                         |
-                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
-                          |       |       |     -valgrind"                                 |
-     11.3.1_p20220610     | o n   |       | USE +=                                         |
-                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
-                          |       |       |     -valgrind"                                 |
-     11.3.1_p20220617     | o n   |       | USE +=                                         |
-                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
-                          |       |       |     -valgrind"                                 |
-     11.4.9999            | o n   |       | USE +=                                         |
-                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
-                          |       |       |     -valgrind"                                 |
---------------------------+-------+-------+------------------------------------------------|
-     12.1.0               | o n   | 12    | USE +=                                         |
-                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
-                          |       |       |     -valgrind"                                 |
-     12.1.1_p20220528-r1  | o n   |       | USE +=                                         |
-                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
-                          |       |       |     -valgrind"                                 |
-     12.1.1_p20220611     | o n   |       | USE +=                                         |
-                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
-                          |       |       |     -valgrind"                                 |
-     12.2.9999            | o n   |       | USE +=                                         |
-                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
-                          |       |       |     -valgrind"                                 |
---------------------------+-------+-------+------------------------------------------------|
-     13.0.0_pre20220605   | o n   | 13    | USE +=                                         |
-                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
-                          |       |       |     -valgrind"                                 |
-     13.0.9999            | o n   |       | USE +=                                         |
-                          |       |       |    "lto zstd (-cet) (-custom-cflags) -d (-pch) |
-                          |       |       |     -valgrind"                                 |
---------------------------+-------+-------+------------------------------------------------|
+                         | amd64 | SLOT  | non shared flag states                   |
+-------------------------+-------+-------+------------------------------------------|
+     8.5.0-r1            | + y   | 8.5.0 | USE += "pch -mpx"                        |
+-------------------------+-------+-------+------------------------------------------|
+     9.5.0               | + y   | 9.5.0 | USE += "lto pch -d"                      |
+-------------------------+-------+-------+------------------------------------------|
+     10.3.0-r2           | + y   | 10    | USE += "lto pch zstd (-cet) -d"          |
+     10.3.1_p20211126    | + y   |       | USE += "lto pch zstd (-cet) -d"          |
+     10.3.1_p20220623    | o n   |       | USE += "lto pch zstd (-cet) -d"          |
+     10.4.9999           | o n   |       | USE += "lto zstd (-cet) -d (-pch)"       |
+-------------------------+-------+-------+------------------------------------------|
+     11.2.0              | + y   | 11    | USE += "lto pch zstd (-cet)              |
+                         |       |       |    (-custom-cflags) -d -valgrind"        |
+     11.2.1_p20220115    | + y   |       | USE += "lto zstd (-cet)                  |
+                         |       |       |    (-custom-cflags) -d (-pch) -valgrind" |
+ [I] 11.3.0              | + y   |       | USE += "lto zstd (-cet)                  |
+                         |       |       |    (-custom-cflags) -d (-pch) -valgrind" |
+     11.3.1_p20220624    | o n   |       | USE += "lto zstd (-cet)                  |
+                         |       |       |    (-custom-cflags) -d (-pch) -valgrind" |
+     11.4.9999           | o n   |       | USE += "lto zstd (-cet)                  |
+                         |       |       |    (-custom-cflags) -d (-pch) -valgrind" |
+-------------------------+-------+-------+------------------------------------------|
+     12.1.0              | o n   | 12    | USE += "lto zstd (-cet)                  |
+                         |       |       |    (-custom-cflags) -d (-pch) -valgrind" |
+     12.1.1_p20220528-r1 | o n   |       | USE += "lto zstd (-cet)                  |
+                         |       |       |    (-custom-cflags) -d (-pch) -valgrind" |
+ [I] 12.1.1_p20220625    | ~ y   |       | USE += "lto zstd (-cet)                  |
+                         |       |       |    (-custom-cflags) -d (-pch) -valgrind" |
+     12.2.9999           | o n   |       | USE += "lto zstd (-cet)                  |
+                         |       |       |    (-custom-cflags) -d (-pch) -valgrind" |
+-------------------------+-------+-------+------------------------------------------|
+     13.0.0_pre20220619  | o n   | 13    | USE += "lto zstd (-cet)                  |
+                         |       |       |    (-custom-cflags) -d (-pch) -valgrind" |
+     13.0.9999           | o n   |       | USE += "lto zstd (-cet)                  |
+                         |       |       |    (-custom-cflags) -d (-pch) -valgrind" |
+-------------------------+-------+-------+------------------------------------------|
 #####################################################
-Total time : 124ms
+Total time : 121ms
 ```
 
 **Notes:**
-- The `lto` flag got disabled for demonstration purposes, one can see that it's printed as `-lto*` (with a star at the end, and in green in the terminal) only for the installed version.
 - The masked versions are not yet put between parentheses, _e.g._ `(8.5.0-r1)` instead of the displayed `8.5.0-r1`.
 
 #### How to (e)build

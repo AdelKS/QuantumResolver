@@ -1,7 +1,8 @@
 #include "cli_interface.h"
 #include "src/format_utils.h"
-#include <fmt/color.h>
-#include <fmt/format.h>
+#include "src/string_utils.h"
+#include "src/table_print.h"
+#include "misc_utils.h"
 
 CommandLineInterface::CommandLineInterface(std::vector<std::string> input)
 {
@@ -76,7 +77,10 @@ void CommandLineInterface::print_pkg_status(const std::string &package_constrain
     std::cout << shared_flag_states << std::endl << std::string(shared_flag_states.size(), '~') << std::endl;
 
     for(const auto& [expand_name, flag_formatting]: pretty_formatting)
-        fmt::print("{}=\"{}\"\n", expand_name, fmt::join(flag_formatting, " "));
+        std::cout << wrap_indent(fmt::format("{}=\"{}\"\n",
+                                             expand_name,
+                                             concatenate(flag_formatting, " ")),
+                                 100, expand_name.size() + 3);
 
     std::cout << std::endl;
 
@@ -95,35 +99,27 @@ void CommandLineInterface::print_pkg_status(const std::string &package_constrain
     // we use this truct to append to strings
     enum struct Table : size_t {VERSION = 0, KEYWORD, SLOT, NON_SHARED_FLAG_STATES, SIZE};
 
+    std::unordered_set<size_t> row_no_sep;
+
     for(auto& ebuild_id: matched_ebuild_ids)
     {
         auto& ebuild = pkg[ebuild_id];
 
         bool same_slot = ebuild.get_slot_str() == slot;
 
-        std::vector<std::string> new_ebuild_line((size_t(Table::SIZE)) - non_shared_flags.empty());
-
-        std::vector<std::string>& ebuild_line = same_slot ? status_table.back() : new_ebuild_line;
-
-        auto append_newline = [&]()
-        {
-            for(auto& str: ebuild_line)
-                str += '\n';
-        };
+        std::vector<std::string> ebuild_line((size_t(Table::SIZE)) - non_shared_flags.empty());
 
         // append new lines if we remain on the same slot
-        if(same_slot)
-            append_newline();
-        else
+        if(not same_slot)
         {
             slot = ebuild.get_slot_str();
             ebuild_line[size_t(Table::SLOT)] += fmt::format(fg(gentoo_orange) | fmt::emphasis::bold, slot);
         }
-
+        else row_no_sep.insert(status_table.size()-1);
 
         if(ebuild.is_installed())
             ebuild_line[size_t(Table::VERSION)] += fmt::format(fmt::emphasis::bold, "[I] {}",  ebuild.get_version().string());
-        else ebuild_line[size_t(Table::VERSION)] += fmt::format("    {} ",  ebuild.get_version().string());
+        else ebuild_line[size_t(Table::VERSION)] += fmt::format("    {}",  ebuild.get_version().string());
 
         ebuild_line[size_t(Table::KEYWORD)] += fmt::format("{} {}",
                                                format_keyword(ebuild.get_arch_keyword()),
@@ -141,42 +137,27 @@ void CommandLineInterface::print_pkg_status(const std::string &package_constrain
                         ebuild.get_changed_flags());
 
             size_t index = 0;
-            const std::string flags_padding(3, ' ');
             for(const auto& [expand_name, flag_formatting]: pretty_formatting)
             {
-                const bool last = index == pretty_formatting.size() - 1;
+                bool last = index == pretty_formatting.size() - 1;
                 std::string& cell = ebuild_line[size_t(Table::NON_SHARED_FLAG_STATES)];
-                const auto& flags_split  = split_string_list(flag_formatting, 40);
-
-                const std::string padding((index != 0) * 2, ' ');
-
-                cell += padding + expand_name + " += ";
-
-                if(flags_split.size() == 1)
-                    cell += fmt::format("\"{}\"", fmt::join(flags_split.front(), " "));
-                else
-                {
-                    append_newline();
-                    for(size_t split_index = 0 ; split_index < flags_split.size() ; split_index++)
-                    {
-                        cell += padding + flags_padding + (split_index == 0 ? "\"" : " ") +
-                                fmt::format("{}", fmt::join(flags_split[split_index], " "));
-                        if(split_index != flags_split.size()-1)
-                            append_newline();
-                    }
-                    cell += "\"";
-                }
-
-                if(not last)
-                    append_newline();
+                cell += fmt::format("{}{} += \"{}\"{}",
+                                    index == 0 ? "" : "  ",
+                                    expand_name,
+                                    concatenate(flag_formatting, " "),
+                                    last ? "" : "\n");
 
                 index++;
             }
         }
 
-        if(not same_slot)
-            status_table.push_back(std::move(new_ebuild_line));
+        status_table.push_back(std::move(ebuild_line));
     }
 
-    print_table(status_table);
+    TablePrint table_printer;
+    table_printer.set_row_sep_skip(row_no_sep);
+    table_printer.set_table_max_width(100);
+    table_printer.set_wrap_indent(3);
+    table_printer.set_table(status_table);
+    table_printer.print_table();
 }

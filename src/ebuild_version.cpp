@@ -5,7 +5,7 @@
 #include <string>
 
 #include "ebuild_version.h"
-#include "misc_utils.h"
+#include "string_utils.h"
 
 template<class Object>
 std::size_t index_of(const std::vector<Object> vec, Object obj)

@@ -1,8 +1,9 @@
-#include "misc_utils.h"
+#include "string_utils.h"
 #include "package.h"
 #include "database.h"
 #include "parser.h"
 #include "src/useflags.h"
+#include <iostream>
 #include <stdexcept>
 
 using namespace std;

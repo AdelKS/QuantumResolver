@@ -11,7 +11,7 @@
 
 #include "package.h"
 #include "parser.h"
-#include "misc_utils.h"
+#include "string_utils.h"
 #include "useflags.h"
 
 class Database;
