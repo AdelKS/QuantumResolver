@@ -1,5 +1,5 @@
 #include "quantum-resolver/cli/cli_interface.h"
-#include "quantum-resolver/utils/format_utils.h"
+#include "quantum-resolver/cli/format_utils.h"
 #include "quantum-resolver/utils/string_utils.h"
 #include "quantum-resolver/cli/table_print.h"
 #include "quantum-resolver/utils/misc_utils.h"
@@ -141,11 +141,11 @@ void CommandLineInterface::print_pkg_status(const std::string &package_constrain
             {
                 bool last = index == pretty_formatting.size() - 1;
                 std::string& cell = ebuild_line[size_t(Table::NON_SHARED_FLAG_STATES)];
-                cell += fmt::format("{}{} += \"{}\"{}",
+                cell += remove_ansi_escape(fmt::format("{}{} += \"{}\"{}",
                                     index == 0 ? "" : "  ",
                                     expand_name,
                                     concatenate(flag_formatting, " "),
-                                    last ? "" : "\n");
+                                    last ? "" : "\n"));
 
                 index++;
             }

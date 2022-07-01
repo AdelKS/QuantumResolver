@@ -4,10 +4,12 @@
 #include "quantum-resolver/core/useflags.h"
 #include "quantum-resolver/core/ebuild.h"
 
-#include "quantum-resolver/utils/format_utils.h"
 #include "quantum-resolver/utils/misc_utils.h"
 #include "quantum-resolver/utils/string_utils.h"
 #include "quantum-resolver/utils/file_utils.h"
+
+#define FMT_HEADER_ONLY
+#include <fmt/format.h>
 
 #include <filesystem>
 

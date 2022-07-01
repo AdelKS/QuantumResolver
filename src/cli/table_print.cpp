@@ -1,7 +1,7 @@
 #include "quantum-resolver/cli/table_print.h"
-#include "quantum-resolver/utils/format_utils.h"
 #include "quantum-resolver/utils/string_utils.h"
 
+#include <cassert>
 #include <cstddef>
 
 using namespace std;

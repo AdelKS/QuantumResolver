@@ -4,14 +4,15 @@
 #include "quantum-resolver/database.h"
 #include "quantum-resolver/utils/multikey_map.h"
 #include "quantum-resolver/utils/named_vector.h"
-#include "quantum-resolver/utils/format_utils.h"
 
 #include <bits/ranges_algo.h>
 #include <filesystem>
 #include <chrono>
-#include <fmt/color.h>
 #include <iostream>
 #include <string_view>
+
+#define FMT_HEADER_ONLY
+#include <fmt/format.h>
 
 using namespace std::chrono;
 namespace fs = std::filesystem;

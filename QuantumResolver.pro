@@ -21,6 +21,7 @@ DISTFILES += \
 SOURCES += \
     src/cli/cli_interface.cpp \
     src/cli/table_print.cpp \
+    src/cli/format_utils.cpp \
     src/core/ebuild.cpp \
     src/core/ebuild_version.cpp \
     src/core/package.cpp \
@@ -31,13 +32,13 @@ SOURCES += \
     src/quantum.cpp \
     src/resolver.cpp \
     src/utils/file_utils.cpp \
-    src/utils/format_utils.cpp \
     src/utils/misc_utils.cpp \
     src/utils/string_utils.cpp
 
 HEADERS += \
     include/quantum-resolver/cli/cli_interface.h \
     include/quantum-resolver/cli/table_print.h \
+    include/quantum-resolver/cli/format_utils.h \
     include/quantum-resolver/core/ebuild.h \
     include/quantum-resolver/core/ebuild_version.h \
     include/quantum-resolver/core/package.h \
@@ -49,7 +50,6 @@ HEADERS += \
     include/quantum-resolver/utils/bijection.h \
     include/quantum-resolver/utils/concepts.h \
     include/quantum-resolver/utils/file_utils.h \
-    include/quantum-resolver/utils/format_utils.h \
     include/quantum-resolver/utils/misc_utils.h \
     include/quantum-resolver/utils/multikey_map.h \
     include/quantum-resolver/utils/named_vector.h \

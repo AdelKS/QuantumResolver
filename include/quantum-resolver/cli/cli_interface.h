@@ -1,7 +1,6 @@
 #pragma once
 
 #include "quantum-resolver/database.h"
-#include "quantum-resolver/utils/format_utils.h"
 
 class CommandLineInterface
 {

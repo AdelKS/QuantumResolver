@@ -1,6 +1,7 @@
 quantum_sources = files(
-    'cli/cli_interface.cpp',
     'cli/table_print.cpp',
+    'cli/cli_interface.cpp',
+    'cli/format_utils.cpp',
     'core/ebuild.cpp',
     'core/ebuild_version.cpp',
     'core/package.cpp',
@@ -10,7 +11,6 @@ quantum_sources = files(
     'database.cpp',
     'resolver.cpp',
     'utils/file_utils.cpp',
-    'utils/format_utils.cpp',
     'utils/misc_utils.cpp',
     'utils/string_utils.cpp',
 )

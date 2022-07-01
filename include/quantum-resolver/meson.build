@@ -1,6 +1,7 @@
 quantum_headers = files(
     'cli/table_print.h',
     'cli/cli_interface.h',
+    'cli/format_utils.h',
     'core/ebuild_version.h',
     'core/ebuild.h',
     'core/parser.h',
@@ -15,7 +16,6 @@ quantum_headers = files(
     'utils/multikey_map.h',
     'utils/named_vector.h',
     'utils/bijection.h',
-    'utils/format_utils.h',
     'utils/string_utils.h',
 )
 
