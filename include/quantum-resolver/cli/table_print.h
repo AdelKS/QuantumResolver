@@ -3,14 +3,13 @@
 
 #include "quantum-resolver/utils/concepts.h"
 
-#include <bits/ranges_algo.h>
-#include <bits/ranges_base.h>
+#include <algorithm>
 #include <iostream>
+#include <numeric>
+#include <ranges>
 #include <stdexcept>
 #include <unordered_set>
 #include <vector>
-#include <ranges>
-#include <numeric>
 
 class TablePrint
 {

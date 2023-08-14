@@ -3,6 +3,7 @@
 #include "quantum-resolver/utils/concepts.h"
 #include "quantum-resolver/core/parser.h"
 #include "quantum-resolver/core/useflags.h"
+#include "quantum-resolver/utils/misc_utils.h"
 
 #include <string>
 #include <string_view>
