@@ -103,7 +103,8 @@ auto read_vars(const filesystem::path& file_path,
             if(not (eq_sign_pos < line.size() - 2 and // to make sure that the line doesn't end with ="
             line[eq_sign_pos+1] == '"' and
             line.back() == '"'))
-                throw runtime_error("File " + file_path.string() + " has problems in its variable definition");
+                throw runtime_error("File " + file_path.string()
+                                    + " has a missquoted variable\n   line: " + line);
         }
 
         emplace_result
