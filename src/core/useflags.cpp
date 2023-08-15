@@ -277,7 +277,7 @@ void UseFlags::populate_profile_flags()
                     values_line.replace(pos, length, non_incremental_var_values[bash_var_name]);
                 else
                 {
-                    fmt::print("Using empty variable: {}", bash_var_name);
+                    fmt::print("Using empty variable: {}\n", bash_var_name);
                     values_line.erase(pos, length);
                 }
             }
